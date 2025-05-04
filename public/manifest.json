@@ -2,10 +2,13 @@
   "name": "HeyCoach",
   "short_name": "HeyCoach",
   "description": "Your personal fitness coach support system",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay"],
+  "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -16,7 +19,27 @@
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "SOS Craving",
+      "short_name": "Craving",
+      "description": "Get instant support for cravings",
+      "url": "/sos/craving?source=shortcut",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Move Boost",
+      "short_name": "Move",
+      "description": "Get movement motivation",
+      "url": "/sos/move?source=shortcut",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["fitness", "health", "lifestyle"],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

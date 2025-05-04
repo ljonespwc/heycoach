@@ -1,0 +1,74 @@
+User‑Flow Narrative
+1. Coach → Profile Set‑Up
+Create Client Profile – Coach creates a new record; one profile per client.
+Input Client Goals – Record weight‑loss goal or habit objectives; drives tone and CTAs.
+Input Trigger Foods – List common cravings or “red‑flag” snacks for CraveSOS quick‑picks.
+Customise AI Responses – Select a tone preset or edit canned replies (defaults to friendly coach; drill sergeant; other).
+Review Dashboard – Coach reviews the client’s summary card and confirms all data before onboarding.
+
+2. Client → Daily Interaction
+
+ CraveSOS Chat (max 1 button press per hour)
+1 — Trigger
+Client taps the “Crave SOS” button; the avatar opens instantly (skip small talk).
+2 — Identify the craving
+“What’s calling your name? (tap or type)”
+ Quick‑pick chips—🍫 Chocolate, 🍕 Pizza, 🍺 Drink—or they type their own.
+3 — Gauge urgency
+“How intense is the pull right now?”
+ Client slides a 1‑to‑10 scale.
+4 — Snapshot the context
+“Where are you and what are you up to?”
+ Tap: 📺 Sofa, 🖥️ Desk, 🚗 On‑the‑go, or type another location.
+5 — Offer a tactic
+Avatar replies with a short, tailored suggestion, e.g.:
+“Try sipping 300 ml of water and walking for two minutes. Let’s see if that drops your craving from an 8 to a 6.”
+6 — Consent check
+“Sound doable?” → Yes or Another idea (rotates to a different tactic).
+7 — Cheer them on
+If Yes: “💪 You’ve got this! I’ll check back in 15 minutes.”
+8 — Follow‑up ping (15 min)
+“How’d it go—resisted or indulged?” One‑tap answer.
+9 — Rate the result
+If resisted: “Nice! 0–10, how strong is the craving now?” (slider).
+Store the delta for analytics.
+10 — Close & reinforce
+“Great data—craving defeated. Streak: {n} resist‑wins. Catch you next wave!”
+
+
+MoveBoost Chat (max 1 button press per hour)
+1 — Trigger
+Client taps “Move Boost.”
+2 — Identify the blocker
+“What’s holding you back right now?”
+ Quick‑pick: 😓 Low energy, 🕒 No time, 📱 Distracted, 😐 Low motivation, or type their own.
+3 — Energy check
+“Energy level right now? (0 💤 – 10 ⚡)”
+ Slider maps intensity.
+4 — Suggest a micro‑action
+Avatar proposes something sized to their energy/blocker, e.g.:
+“Let’s spark a three‑minute ‘energy flush’: 20 jumping jacks + 20 squats—faster than an Instagram scroll.”
+5 — Consent check
+“Ready to start the 3‑min timer?” → Start or Another idea.
+6 — Countdown
+In‑app timer runs; dots or progress ring animate.
+7 — Post‑action energy rating
+“Nice work! Energy now?” (same 0–10 slider).
+8 — Reflection & win log
+“That’s a +{Δ} boost. Mark this as a win?” → Yes / Skip.
+9 — Close
+“Momentum unlocked! Next up: your coach‑scheduled workout. 🔥”
+
+Data captured: craving type, blocker type, intensity, context, energy delta, tactic chosen, success indicator of some sort, post intervention craving indicator, post intervention energy indicator, notify coach indicator, time/day of week. we also need a table for craving intervention and for energy boost interventions.
+
+3. Automated Follow‑Up
+System Schedules 15‑Minute Timer – Starts once the chat closes; coach can adjust the interval.
+Notification Sent – "How did it go?" push or badge prompts a one‑tap answer.
+Outcome Feedback – Client logs a Success or Slip with an optional quick comment.
+Data Added to Dashboard – Result is stored in Supabase and visualised, updating the craving hot‑spot heat‑map.
+
+4. Coach → Ongoing Monitoring Loop
+Dashboard Review – Coach checks aggregate CravingSOS/MoveBoost data, filtering by mode, time‑of‑day, and outcome.
+Identify Issues? – Decision point mirroring the initial setup, now data‑driven (e.g., repeated 3 pm chocolate failures).
+Adjust Profile / AI Scripts – Update trigger foods, tone, or goal cues; changes apply to the next chat automatically.
+Continue Monitoring – This cycle repeats weekly or on demand, requiring only a few minutes per client.
