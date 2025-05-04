@@ -15,7 +15,7 @@ export default function CoachLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${inter.className}`}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside className="w-64 bg-card border-r border-border">
