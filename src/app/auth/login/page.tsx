@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function LoginPage() {
-  const supabase = createClient()
 
   const signInWithGoogle = async () => {
     'use server'
