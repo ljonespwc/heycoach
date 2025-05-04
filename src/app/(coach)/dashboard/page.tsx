@@ -15,7 +15,7 @@ export default function DashboardPage() {
           <p className="text-3xl font-bold text-primary">0</p>
         </div>
         <div className="p-6 bg-card rounded-lg border border-border feature-card">
-          <h3 className="text-lg font-semibold mb-2">Today's SOS Calls</h3>
+          <h3 className="text-lg font-semibold mb-2">Today&apos;s SOS Calls</h3>
           <p className="text-3xl font-bold text-secondary">0</p>
         </div>
         <div className="p-6 bg-card rounded-lg border border-border feature-card">
