@@ -13,12 +13,7 @@ export const metadata: Metadata = {
   description: 'Manage your clients and track their progress',
 }
 
-async function handleSignOut() {
-  'use server'
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  throw redirect('/auth/login')
-}
+
 
 export default function CoachLayout({
   children,
@@ -29,8 +24,11 @@ export default function CoachLayout({
     <div className={`min-h-screen bg-background ${inter.className}`}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-64 bg-card border-r border-border">
-          <div className="h-16 flex items-center px-6 border-b border-border">
+        <aside className="w-64 bg-card border-r border-border flex flex-col">
+          <div className="flex-1 p-4">
+            <SidebarNav />
+          </div>
+          <div className="p-4 flex justify-center">
             <div className="relative h-[42px] w-[48px]">
               <Image
                 src="/images/logo-main.png"
@@ -42,31 +40,11 @@ export default function CoachLayout({
               />
             </div>
           </div>
-          <nav className="p-4">
-            <SidebarNav />
-          </nav>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1">
-          <header className="h-16 border-b border-border flex items-center justify-between px-6">
-            <div className="flex items-center space-x-4">
-              <h2 className="text-lg font-semibold text-gray-900">Dashboard</h2>
-            </div>
-            <div className="flex items-center space-x-4">
-              <form action={handleSignOut}>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
-                >
-                  Sign Out
-                </button>
-              </form>
-            </div>
-          </header>
-          <div className="p-6">
-            {children}
-          </div>
+        <main className="flex-1 p-4">
+          {children}
         </main>
       </div>
     </div>

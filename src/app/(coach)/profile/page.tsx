@@ -28,8 +28,8 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       {/* Profile Form */}
-      <div className="p-6 bg-card rounded-lg border border-border">
-        <div className="space-y-8">
+      <div className="p-4 bg-card rounded-lg border border-border">
+        <div className="space-y-6">
           {/* Avatar Upload */}
           <AvatarUpload coach={coach} userId={user.id} />
           
