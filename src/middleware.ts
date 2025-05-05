@@ -59,6 +59,25 @@ export async function middleware(request: NextRequest) {
   // Debug logging
   console.log('Current path:', request.nextUrl.pathname)
   console.log('Session exists:', !!session)
+  console.log('Request cookies:', request.cookies.getAll())
+  console.log('Response cookies:', response.cookies.getAll())
+  
+  if (session) {
+    const sessionDetails = {
+      user: session.user?.email,
+      expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'Not available',
+      expiresIn: session.expires_in,
+      accessToken: session.access_token ? 'Present' : 'Missing',
+      refreshToken: session.refresh_token ? 'Present' : 'Missing',
+      provider: session.user?.app_metadata?.provider,
+      sessionKeys: Object.keys(session).join(', '),
+      userKeys: session.user ? Object.keys(session.user).join(', ') : 'No user data',
+      rawSession: JSON.stringify(session, null, 2)
+    }
+    console.log('Session details:', sessionDetails)
+  } else {
+    console.log('No active session found')
+  }
 
   // If user is not signed in and the current path is not /auth/login or /auth/callback,
   // redirect the user to /auth/login
