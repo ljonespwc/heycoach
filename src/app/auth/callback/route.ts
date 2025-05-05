@@ -6,20 +6,11 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') || '/dashboard'
   
-  console.log('Callback URL:', requestUrl.toString())
-  console.log('Auth code present:', !!code)
-
   if (code) {
     try {
       const supabase = await createClient()
-      console.log('Created Supabase client')
       
       const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-      console.log('Exchange complete:', {
-        success: !!data?.session,
-        error: error?.message || 'none',
-        user: data?.session?.user?.email || 'no user'
-      })
       
       if (error) {
         console.error('Auth error:', error)
@@ -32,7 +23,6 @@ export async function GET(request: Request) {
       }
 
       // Successful authentication
-      console.log('Authentication successful, redirecting to:', next)
       return NextResponse.redirect(new URL(next, request.url))
     } catch (error) {
       console.error('Unexpected error:', error)
@@ -41,6 +31,5 @@ export async function GET(request: Request) {
   }
 
   // No code present
-  console.log('No code in callback URL')
   return NextResponse.redirect(new URL('/auth/login?error=no_code', request.url))
 }

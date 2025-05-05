@@ -3,8 +3,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   const requestUrl = new URL(request.url)
-  console.log('Request URL:', requestUrl.toString())
-  
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -18,11 +16,9 @@ export async function middleware(request: NextRequest) {
       cookies: {
         get(name: string) {
           const cookie = request.cookies.get(name)
-          console.log('Getting cookie:', name, cookie?.value ? 'present' : 'missing')
           return cookie?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          console.log('Setting cookie:', name, 'with options:', options)
           // Set cookie in both request and response
           request.cookies.set({ name, value })
           response = NextResponse.next({
@@ -40,7 +36,6 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-          console.log('Removing cookie:', name)
           request.cookies.set(name, '')
           response = NextResponse.next({
             request: {
@@ -66,34 +61,12 @@ export async function middleware(request: NextRequest) {
     console.error('Session error:', sessionError)
   }
 
-  // Debug logging
-  console.log('Current path:', request.nextUrl.pathname)
-  console.log('Session exists:', !!session)
-  console.log('Auth cookies:', {
-    sb: request.cookies.get('sb-access-token')?.value ? 'present' : 'missing',
-    sbRefresh: request.cookies.get('sb-refresh-token')?.value ? 'present' : 'missing',
-  })
-  
-  if (session) {
-    const sessionDetails = {
-      user: session.user?.email,
-      provider: session.user?.app_metadata?.provider,
-      lastSignIn: session.user?.last_sign_in_at,
-      sessionKeys: Object.keys(session).join(', ')
-    }
-    console.log('Session details:', sessionDetails)
-  } else {
-    console.log('No active session found')
-  }
-
   // Handle redirects
   if (!session && !request.nextUrl.pathname.startsWith('/auth')) {
-    console.log('Redirecting to login: No session')
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
   if (session && request.nextUrl.pathname.startsWith('/auth')) {
-    console.log('Redirecting to dashboard: Has session')
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
