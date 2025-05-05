@@ -6,5 +6,6 @@ export interface CoachSettings {
 export interface Coach {
   id: string
   full_name: string | null
+  avatar_url: string | null
   coach_settings: CoachSettings | null
 }

@@ -49,7 +49,7 @@ export function ProfileForm({ coach }: ProfileFormProps) {
           id="full_name"
           name="full_name"
           defaultValue={coach?.full_name || ''}
-          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-3 py-2 border border-border rounded-lg bg-background text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="Your full name"
         />
       </div>
@@ -62,29 +62,12 @@ export function ProfileForm({ coach }: ProfileFormProps) {
           id="tone_preset"
           name="tone_preset"
           defaultValue={coach?.coach_settings?.tone_preset || 'friendly'}
-          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full px-3 py-2 border border-border rounded-lg bg-background text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="friendly">Friendly and Supportive</option>
           <option value="professional">Professional and Direct</option>
           <option value="motivational">Motivational and Energetic</option>
         </select>
-      </div>
-
-      <div>
-        <label htmlFor="custom_responses" className="block text-sm font-medium text-gray-900 mb-2">
-          Custom Response Templates
-        </label>
-        <textarea
-          id="custom_responses"
-          name="custom_responses"
-          rows={4}
-          defaultValue={coach?.coach_settings?.custom_responses ? JSON.stringify(coach.coach_settings.custom_responses, null, 2) : ''}
-          className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="Add custom response templates in JSON format"
-        />
-        <p className="mt-1 text-sm text-gray-500">
-          Add custom responses in JSON format to personalize your coaching communications
-        </p>
       </div>
 
       <div className="flex justify-end">
