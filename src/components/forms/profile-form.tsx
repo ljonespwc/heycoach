@@ -3,14 +3,10 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
+import { Coach } from '@/types/coach'
+
 interface ProfileFormProps {
-  coach: {
-    full_name: string | null
-    coach_settings?: {
-      tone_preset: string
-      custom_responses: any
-    } | null
-  } | null
+  coach: Coach | null
 }
 
 export function ProfileForm({ coach }: ProfileFormProps) {

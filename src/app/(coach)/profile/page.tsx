@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ProfileForm } from '@/components/forms/profile-form'
+import { Coach } from '@/types/coach'
 
 export const metadata: Metadata = {
   title: 'Profile | HeyCoach',
@@ -21,7 +22,7 @@ export default async function ProfilePage() {
     .from('coaches')
     .select('*, coach_settings(*)')
     .eq('id', user.id)
-    .single()
+    .single() as { data: Coach }
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { Coach, CoachSettings } from '@/types/coach'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       .from('coaches')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .single() as { data: Coach }
 
     if (!coach) {
       // Create coach profile if it doesn't exist
