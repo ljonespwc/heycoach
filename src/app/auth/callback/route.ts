@@ -4,23 +4,36 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  console.log('Callback received with code:', !!code)
+  const next = requestUrl.searchParams.get('next') || '/dashboard'
+  
+  console.log('Callback URL:', requestUrl.toString())
+  console.log('Auth code present:', !!code)
 
   if (code) {
     try {
       const supabase = await createClient()
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+      console.log('Created Supabase client')
       
-      console.log('Exchange result:', { data, error })
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+      console.log('Exchange complete:', {
+        success: !!data?.session,
+        error: error?.message || 'none',
+        user: data?.session?.user?.email || 'no user'
+      })
       
       if (error) {
         console.error('Auth error:', error)
         return NextResponse.redirect(new URL('/auth/login?error=auth_failed', request.url))
       }
 
+      if (!data.session) {
+        console.error('No session in exchange response')
+        return NextResponse.redirect(new URL('/auth/login?error=no_session', request.url))
+      }
+
       // Successful authentication
-      console.log('Authentication successful, redirecting to dashboard')
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      console.log('Authentication successful, redirecting to:', next)
+      return NextResponse.redirect(new URL(next, request.url))
     } catch (error) {
       console.error('Unexpected error:', error)
       return NextResponse.redirect(new URL('/auth/login?error=unexpected', request.url))

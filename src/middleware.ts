@@ -2,6 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const requestUrl = new URL(request.url)
+  console.log('Request URL:', requestUrl.toString())
+  
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -14,14 +17,14 @@ export async function middleware(request: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return request.cookies.get(name)?.value
+          const cookie = request.cookies.get(name)
+          console.log('Getting cookie:', name, cookie?.value ? 'present' : 'missing')
+          return cookie?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          console.log('Setting cookie:', name, 'with options:', options)
+          // Set cookie in both request and response
+          request.cookies.set({ name, value })
           response = NextResponse.next({
             request: {
               headers: request.headers,
@@ -31,63 +34,64 @@ export async function middleware(request: NextRequest) {
             name,
             value,
             ...options,
+            secure: true,
+            sameSite: 'lax',
+            path: '/',
           })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          console.log('Removing cookie:', name)
+          request.cookies.set(name, '')
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           })
-          response.cookies.set({
-            name,
-            value: '',
+          response.cookies.set(name, '', {
             ...options,
+            maxAge: 0,
+            path: '/',
           })
         },
       },
+      auth: {
+        persistSession: true
+      }
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  
+  if (sessionError) {
+    console.error('Session error:', sessionError)
+  }
 
   // Debug logging
   console.log('Current path:', request.nextUrl.pathname)
   console.log('Session exists:', !!session)
-  console.log('Request cookies:', request.cookies.getAll())
-  console.log('Response cookies:', response.cookies.getAll())
+  console.log('Auth cookies:', {
+    sb: request.cookies.get('sb-access-token')?.value ? 'present' : 'missing',
+    sbRefresh: request.cookies.get('sb-refresh-token')?.value ? 'present' : 'missing',
+  })
   
   if (session) {
     const sessionDetails = {
       user: session.user?.email,
-      expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'Not available',
-      expiresIn: session.expires_in,
-      accessToken: session.access_token ? 'Present' : 'Missing',
-      refreshToken: session.refresh_token ? 'Present' : 'Missing',
       provider: session.user?.app_metadata?.provider,
-      sessionKeys: Object.keys(session).join(', '),
-      userKeys: session.user ? Object.keys(session.user).join(', ') : 'No user data',
-      rawSession: JSON.stringify(session, null, 2)
+      lastSignIn: session.user?.last_sign_in_at,
+      sessionKeys: Object.keys(session).join(', ')
     }
     console.log('Session details:', sessionDetails)
   } else {
     console.log('No active session found')
   }
 
-  // If user is not signed in and the current path is not /auth/login or /auth/callback,
-  // redirect the user to /auth/login
+  // Handle redirects
   if (!session && !request.nextUrl.pathname.startsWith('/auth')) {
     console.log('Redirecting to login: No session')
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  // If user is signed in and the current path is /auth/login,
-  // redirect the user to /dashboard
   if (session && request.nextUrl.pathname.startsWith('/auth')) {
     console.log('Redirecting to dashboard: Has session')
     return NextResponse.redirect(new URL('/dashboard', request.url))
