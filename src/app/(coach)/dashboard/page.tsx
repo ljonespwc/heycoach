@@ -1,11 +1,19 @@
 import { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = {
   title: 'Dashboard | HeyCoach',
   description: 'Your coaching dashboard',
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    return redirect('/auth/login')
+  }
   return (
     <div className="space-y-6">
       {/* Stats Overview */}

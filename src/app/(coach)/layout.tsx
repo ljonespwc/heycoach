@@ -16,7 +16,7 @@ async function handleSignOut() {
   'use server'
   const supabase = await createClient()
   await supabase.auth.signOut()
-  return redirect('/auth/login')
+  throw redirect('/auth/login')
 }
 
 export default function CoachLayout({
