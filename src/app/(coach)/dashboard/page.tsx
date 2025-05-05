@@ -11,22 +11,22 @@ export default function DashboardPage() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 bg-card rounded-lg border border-border feature-card">
-          <h3 className="text-lg font-semibold mb-2">Active Clients</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900">Active Clients</h3>
           <p className="text-3xl font-bold text-primary">0</p>
         </div>
         <div className="p-6 bg-card rounded-lg border border-border feature-card">
-          <h3 className="text-lg font-semibold mb-2">Today&apos;s SOS Calls</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900">Today&apos;s SOS Calls</h3>
           <p className="text-3xl font-bold text-secondary">0</p>
         </div>
         <div className="p-6 bg-card rounded-lg border border-border feature-card">
-          <h3 className="text-lg font-semibold mb-2">Success Rate</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900">Success Rate</h3>
           <p className="text-3xl font-bold text-accent">0%</p>
         </div>
       </div>
 
       {/* Recent Activity */}
       <div className="p-6 bg-card rounded-lg border border-border">
-        <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-900">Recent Activity</h3>
         <div className="text-muted-foreground text-center py-8">
           No recent activity
         </div>
@@ -35,7 +35,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-6 bg-card rounded-lg border border-border">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
           <div className="space-y-4">
             <button className="w-full p-4 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors">
               Add New Client
@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
         {/* Client Insights */}
         <div className="p-6 bg-card rounded-lg border border-border">
-          <h3 className="text-lg font-semibold mb-4">Client Insights</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Client Insights</h3>
           <div className="text-muted-foreground text-center py-8">
             Add clients to see insights
           </div>
