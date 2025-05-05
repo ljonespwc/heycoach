@@ -1,8 +1,6 @@
 import { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { SidebarNav } from '@/components/nav/sidebar-nav'
 import '../globals.css'
 
