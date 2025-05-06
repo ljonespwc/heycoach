@@ -26,7 +26,7 @@ export const createClient = async () => {
             if (cookieStore.has(name)) {
               cookieStore.set(name, '', { ...options, maxAge: 0 })
             }
-          } catch (error) {
+          } catch {
             // Silently handle cookie removal errors
             // This prevents errors from breaking the auth flow
           }
