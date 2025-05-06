@@ -51,29 +51,43 @@ export function AvatarUpload({ coach, userId }: AvatarUploadProps) {
     URL.revokeObjectURL(objectUrl)
 
     const supabase = createClient()
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${userId}/${Math.random()}.${fileExt}`
     
-    const { error: uploadError } = await supabase.storage
+    const fileExt = file.name.split('.').pop()
+    const randomString = Math.random().toString(36).substring(2, 10)
+    const fileName = `${userId}/${randomString}.${fileExt}`
+    
+    // Upload the file with explicit upsert to handle existing files
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file)
+      .upload(fileName, file, {
+        upsert: true,
+        cacheControl: '3600'
+      })
 
     if (uploadError) {
-      toast.error('Error uploading image')
+      console.error('Storage upload error:', uploadError)
+      toast.error('Error uploading image: ' + uploadError.message)
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage
+    // Get the public URL
+    const { data: urlData } = await supabase.storage
       .from('avatars')
       .getPublicUrl(fileName)
 
+    // Ensure we have a valid URL
+    const publicUrl = new URL(urlData.publicUrl).toString()
+    console.log('Generated public URL:', publicUrl)
+
+    // Update the coach profile with the new avatar URL
     const { error: updateError } = await supabase
       .from('coaches')
       .update({ avatar_url: publicUrl })
       .eq('id', userId)
 
     if (updateError) {
-      toast.error('Error updating profile')
+      console.error('Profile update error:', updateError)
+      toast.error('Error updating profile: ' + updateError.message)
       return
     }
 
