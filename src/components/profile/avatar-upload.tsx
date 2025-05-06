@@ -57,7 +57,7 @@ export function AvatarUpload({ coach, userId }: AvatarUploadProps) {
     const fileName = `${userId}/${randomString}.${fileExt}`
     
     // Upload the file with explicit upsert to handle existing files
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, file, {
         upsert: true,

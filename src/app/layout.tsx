@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { createClient } from '@/lib/supabase/server';
-import { headers } from 'next/headers';
 import { cookies } from 'next/headers';
 import "./globals.css";
 
@@ -51,9 +49,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const cookieStore = cookies()
-  const supabase = createClient()
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
