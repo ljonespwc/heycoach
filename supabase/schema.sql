@@ -67,6 +67,22 @@ CREATE TABLE IF NOT EXISTS client_interventions (
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS default_craving_interventions (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name text NOT NULL,
+    description text NOT NULL,
+    category text,
+    context_tags text[]
+);
+
+CREATE TABLE IF NOT EXISTS default_energy_interventions (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name text NOT NULL,
+    description text NOT NULL,
+    category text,
+    context_tags text[]
+);
+
 CREATE TABLE IF NOT EXISTS trigger_foods (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     client_id uuid NOT NULL REFERENCES clients(id),
