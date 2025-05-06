@@ -41,7 +41,7 @@ export const viewport = {
   }],
 };
 
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from 'sonner'
 
 export default function RootLayout({
   children,
@@ -52,7 +52,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" theme="system" />
         <main className="relative flex min-h-screen flex-col">
           {children}
         </main>
