@@ -77,13 +77,14 @@ export function AvatarUpload({ coach, userId }: AvatarUploadProps) {
 
     // Ensure we have a valid URL
     const publicUrl = new URL(urlData.publicUrl).toString()
-    console.log('Generated public URL:', publicUrl)
 
-    // Update the coach profile with the new avatar URL
+    // Update or create the coach profile with the new avatar URL
     const { error: updateError } = await supabase
       .from('coaches')
-      .update({ avatar_url: publicUrl })
-      .eq('id', userId)
+      .upsert({
+        id: userId,
+        avatar_url: publicUrl
+      })
 
     if (updateError) {
       console.error('Profile update error:', updateError)

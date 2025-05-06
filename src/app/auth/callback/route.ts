@@ -22,6 +22,24 @@ export async function GET(request: Request) {
         return NextResponse.redirect(new URL('/auth/login?error=no_session', request.url))
       }
 
+      // Create coach record if it doesn't exist
+      const { data: existingCoach } = await supabase
+        .from('coaches')
+        .select('id')
+        .eq('id', data.session.user.id)
+        .single()
+
+      if (!existingCoach) {
+        const { error: createError } = await supabase
+          .from('coaches')
+          .insert([{ id: data.session.user.id }])
+
+        if (createError) {
+          console.error('Error creating coach record:', createError)
+          return NextResponse.redirect(new URL('/auth/login?error=coach_creation_failed', request.url))
+        }
+      }
+
       // Successful authentication
       return NextResponse.redirect(new URL(next, request.url))
     } catch (error) {
