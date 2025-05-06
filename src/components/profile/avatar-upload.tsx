@@ -5,6 +5,7 @@ import { UserCircle, PencilIcon } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 import { createClient } from '@/lib/supabase/client'
 import { Coach } from '@/types/coach'
+import { useState } from 'react'
 
 interface AvatarUploadProps {
   coach: Coach
@@ -12,18 +13,46 @@ interface AvatarUploadProps {
 }
 
 export function AvatarUpload({ coach, userId }: AvatarUploadProps) {
+  const [avatarUrl, setAvatarUrl] = useState(coach?.avatar_url)
+  const [isUploading, setIsUploading] = useState(false)
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    try {
+      setIsUploading(true)
+      const file = e.target.files?.[0]
+      if (!file) return
 
+    // Validate file size
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image must be less than 5MB')
       return
     }
 
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a PNG or JPG image')
+      return
+    }
+
+    // Validate dimensions
+    const img = document.createElement('img')
+    const objectUrl = URL.createObjectURL(file)
+    img.src = objectUrl
+    
+    await new Promise<void>((resolve) => {
+      img.onload = () => resolve()
+    })
+    
+    if (img.width < 200 || img.height < 200) {
+      URL.revokeObjectURL(objectUrl)
+      toast.error('Image must be at least 200x200 pixels')
+      return
+    }
+    URL.revokeObjectURL(objectUrl)
+
     const supabase = createClient()
     const fileExt = file.name.split('.').pop()
-    const fileName = `${userId}-${Math.random()}.${fileExt}`
+    const fileName = `${userId}/${Math.random()}.${fileExt}`
     
     const { error: uploadError } = await supabase.storage
       .from('avatars')
@@ -38,26 +67,40 @@ export function AvatarUpload({ coach, userId }: AvatarUploadProps) {
       .from('avatars')
       .getPublicUrl(fileName)
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('coaches')
       .update({ avatar_url: publicUrl })
       .eq('id', userId)
 
+    if (updateError) {
+      toast.error('Error updating profile')
+      return
+    }
+
+    setAvatarUrl(publicUrl)
     toast.success('Profile picture updated')
-    window.location.reload() // Refresh to show new avatar
+    } catch (error) {
+      console.error('Avatar upload error:', error)
+      toast.error('Error uploading image')
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
     <div className="flex items-center space-x-4">
       <div className="relative">
         <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
-          {coach?.avatar_url ? (
+          {isUploading ? (
+            <div className="animate-pulse bg-muted-foreground/20 w-full h-full" />
+          ) : avatarUrl ? (
             <Image
-              src={coach.avatar_url}
+              src={avatarUrl}
               alt="Profile"
               width={96}
               height={96}
-              className="object-cover"
+              className="object-cover w-full h-full"
+              priority
             />
           ) : (
             <UserCircle className="w-12 h-12 text-muted-foreground" />

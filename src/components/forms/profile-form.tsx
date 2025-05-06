@@ -25,14 +25,16 @@ export function ProfileForm({ coach }: ProfileFormProps) {
         body: formData,
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error('Failed to update profile')
+        throw new Error(data.error || 'Failed to update profile')
       }
 
       toast.success('Profile updated successfully')
     } catch (error) {
       console.error('Error updating profile:', error)
-      toast.error('Failed to update profile')
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile')
     } finally {
       setIsSubmitting(false)
     }
@@ -48,9 +50,11 @@ export function ProfileForm({ coach }: ProfileFormProps) {
           type="text"
           id="full_name"
           name="full_name"
+          required
+          maxLength={100}
           defaultValue={coach?.full_name || ''}
           className="w-full px-3 py-2 border border-border rounded-lg bg-background text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="Your full name"
+          placeholder="Your full name (required)"
         />
       </div>
 
@@ -61,6 +65,7 @@ export function ProfileForm({ coach }: ProfileFormProps) {
         <select
           id="tone_preset"
           name="tone_preset"
+          required
           defaultValue={coach?.coach_settings?.tone_preset || 'friendly'}
           className="w-full px-3 py-2 border border-border rounded-lg bg-background text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
         >

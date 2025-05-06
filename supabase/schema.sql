@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS coaches (
     id uuid PRIMARY KEY,
     full_name text,
+    avatar_url text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -9,7 +10,6 @@ CREATE TABLE IF NOT EXISTS coach_settings (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     coach_id uuid NOT NULL REFERENCES coaches(id),
     tone_preset text DEFAULT 'friendly'::text NOT NULL,
-    custom_responses jsonb,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS trigger_foods (
     category text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Add unique constraint for coach_settings
+ALTER TABLE coach_settings 
+ADD CONSTRAINT coach_settings_coach_id_key UNIQUE (coach_id);
 
 CREATE TABLE IF NOT EXISTS craving_incidents (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

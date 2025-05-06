@@ -12,47 +12,55 @@ export async function POST(request: Request) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
-  // Get form data
+  // Get and validate form data
   const formData = await request.formData()
   const full_name = formData.get('full_name') as string
   const tone_preset = formData.get('tone_preset') as string
-  const custom_responses = formData.get('custom_responses') as string
+
+  // Simple validations
+  if (!full_name?.trim()) {
+    return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
+  }
+  if (full_name.length > 100) {
+    return NextResponse.json({ error: 'Full name must be less than 100 characters' }, { status: 400 })
+  }
+  if (!['friendly', 'professional', 'motivational'].includes(tone_preset)) {
+    return NextResponse.json({ error: 'Invalid communication style' }, { status: 400 })
+  }
 
   try {
-    const { data: coach } = await supabase
+    // Update coach profile
+    const { error: coachError } = await supabase
       .from('coaches')
-      .select('*')
-      .eq('id', user.id)
-      .single() as { data: Coach }
-
-    if (!coach) {
-      // Create coach profile if it doesn't exist
-      await supabase.from('coaches').insert({
+      .upsert({
         id: user.id,
-        full_name: full_name || '',
+        full_name,
       })
-    } else {
-      // Update coach profile
-      await supabase
-        .from('coaches')
-        .upsert({
-          id: user.id,
-          full_name,
-        })
-    }
+    
+    if (coachError) throw coachError
 
     // Update coach settings
-    await supabase
+    const { error: settingsError } = await supabase
       .from('coach_settings')
-      .upsert({
-        coach_id: user.id,
-        tone_preset,
-        custom_responses: custom_responses ? JSON.parse(custom_responses) : null,
-      })
+      .upsert(
+        {
+          coach_id: user.id,
+          tone_preset,
+        },
+        {
+          onConflict: 'coach_id',
+          ignoreDuplicates: false
+        }
+      )
+    
+    if (settingsError) throw settingsError
 
-    return NextResponse.redirect('/profile')
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error updating profile:', error)
-    return new NextResponse('Error updating profile', { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Error updating profile' },
+      { status: 500 }
+    )
   }
 }
