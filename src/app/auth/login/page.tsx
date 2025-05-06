@@ -11,6 +11,11 @@ export default async function LoginPage() {
       email,
       options: {
         emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        shouldCreateUser: true,
+        // Keep user logged in for 30 days
+        data: {
+          maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+        }
       },
     })
 
@@ -28,12 +33,13 @@ export default async function LoginPage() {
       provider: 'google',
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000').origin}/auth/callback`,
-        // Add debug log to see what URL is being used
         scopes: 'email profile',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
-        },
+          // Set to maximum allowed by Google (24 hours)
+          max_age: '86400'
+        }
       },
     })
     if (error) {

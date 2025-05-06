@@ -22,9 +22,13 @@ export const createClient = async () => {
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set(name, '', { ...options, maxAge: 0 })
+            // Only attempt to remove if we're in a mutable context
+            if (cookieStore.has(name)) {
+              cookieStore.set(name, '', { ...options, maxAge: 0 })
+            }
           } catch (error) {
-            console.error('Error removing cookie:', error)
+            // Silently handle cookie removal errors
+            // This prevents errors from breaking the auth flow
           }
         },
       },
