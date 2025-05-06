@@ -28,8 +28,6 @@ CREATE TABLE IF NOT EXISTS craving_interventions (
     name text NOT NULL,
     description text NOT NULL,
     category text,
-    duration_minutes integer,
-    intensity_range jsonb,
     context_tags text[],
     success_rate numeric,
     active boolean DEFAULT true,
@@ -43,12 +41,28 @@ CREATE TABLE IF NOT EXISTS energy_interventions (
     name text NOT NULL,
     description text NOT NULL,
     category text,
-    duration_minutes integer,
-    energy_level_range jsonb,
-    intensity_level text,
-    equipment_needed text[],
+    context_tags text[],
     success_rate numeric,
     active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS client_interventions (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    client_id uuid NOT NULL REFERENCES clients(id),
+    intervention_type text NOT NULL CHECK (intervention_type IN ('craving', 'energy')),
+    intervention_id uuid NOT NULL,
+    intensity_level integer,
+    energy_level integer,
+    times_used integer DEFAULT 0,
+    last_used_at timestamp with time zone,
+    effectiveness_rating integer CHECK (effectiveness_rating BETWEEN 1 AND 10),
+    client_notes text,
+    coach_notes text,
+    favorite boolean DEFAULT false,
+    active boolean DEFAULT true,
+    coach_disabled boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
