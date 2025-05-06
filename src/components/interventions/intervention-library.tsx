@@ -5,6 +5,22 @@ import { toast } from '@/components/ui/use-toast'
 import { BaseIntervention, CravingIntervention, EnergyIntervention } from '@/types/intervention'
 import { createClient } from '@/lib/supabase/client'
 
+// Helper function to get category color
+function getCategoryColor(category: string | null) {
+  if (!category) return "bg-gray-100 text-gray-700";
+  
+  switch(category.toLowerCase()) {
+    case 'physical':
+      return "bg-blue-100 text-blue-700";
+    case 'emotional':
+      return "bg-amber-100 text-amber-700";
+    case 'environmental':
+      return "bg-emerald-100 text-emerald-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
 // Tabs component
 interface InterventionTabsProps {
   activeTab: 'craving' | 'energy'
@@ -112,12 +128,12 @@ function InterventionList({ interventions, type }: InterventionListProps) {
         >
           <div className="flex justify-between items-start">
             <div className="space-y-2">
-              <h3 className="font-medium">{intervention.name}</h3>
+              <h3 className="font-medium text-gray-900">{intervention.name}</h3>
               
               {/* Category and tags */}
               <div className="flex flex-wrap gap-2 mt-1">
                 {intervention.category && (
-                  <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md text-xs">
+                  <span className={`${getCategoryColor(intervention.category)} px-2 py-0.5 rounded-md text-xs`}>
                     {intervention.category}
                   </span>
                 )}
@@ -139,8 +155,8 @@ function InterventionList({ interventions, type }: InterventionListProps) {
                 onClick={() => toggleActive(intervention)}
                 disabled={updatingIds.has(intervention.id)}
                 className={`
-                  relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                  ${intervention.active ? 'bg-primary' : 'bg-gray-200'}
+                  relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                  ${intervention.active ? 'bg-green-500' : 'bg-gray-200'}
                   ${updatingIds.has(intervention.id) ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
               >
@@ -234,9 +250,10 @@ export function InterventionLibrary({
     setShowActive(prev => prev === status ? null : status)
   }
   
+  
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Intervention Library</h2>
+      <h2 className="text-xl font-semibold text-gray-900">Intervention Library</h2>
       
       {/* Tabs for switching between intervention types */}
       <InterventionTabs 
@@ -250,7 +267,7 @@ export function InterventionLibrary({
         {/* Filters sidebar */}
         <div className="w-full md:w-64 space-y-6">
           <div className="p-4 bg-card rounded-lg border border-border space-y-4">
-            <h3 className="font-medium text-sm">Filters</h3>
+            <h3 className="font-medium text-sm text-gray-900">Filters</h3>
             
             {/* Category filter */}
             <div>
@@ -262,7 +279,7 @@ export function InterventionLibrary({
                     className={`text-sm px-2 py-1 rounded-md w-full text-left ${
                       activeCategory === null 
                         ? 'bg-primary/10 text-primary' 
-                        : 'hover:bg-gray-100'
+                        : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
                     All Categories
@@ -276,7 +293,7 @@ export function InterventionLibrary({
                       className={`text-sm px-2 py-1 rounded-md w-full text-left ${
                         activeCategory === category 
                           ? 'bg-primary/10 text-primary' 
-                          : 'hover:bg-gray-100'
+                          : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
                       {category}
@@ -315,7 +332,7 @@ export function InterventionLibrary({
                   className={`text-sm px-2 py-1 rounded-md w-full text-left ${
                     showActive === true
                       ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-gray-100'
+                      : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   Active
@@ -325,7 +342,7 @@ export function InterventionLibrary({
                   className={`text-sm px-2 py-1 rounded-md w-full text-left ${
                     showActive === false
                       ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-gray-100'
+                      : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   Inactive
