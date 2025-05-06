@@ -98,7 +98,7 @@ function InterventionList({ interventions, type }: InterventionListProps) {
       // Update the intervention in the UI
       intervention.active = newStatus
       
-      toast.success(`${intervention.name} is now ${newStatus ? 'active' : 'inactive'}.`)
+      toast.success(`${intervention.name} is now ${newStatus ? 'active' : 'inactive'} for all clients.`)
     } catch (error) {
       console.error('Error updating intervention:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to update intervention')
