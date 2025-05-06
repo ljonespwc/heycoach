@@ -1,5 +1,90 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { SupabaseClient } from '@supabase/supabase-js'
+
+// Define interfaces for intervention types
+interface DefaultIntervention {
+  id: string
+  name: string
+  description: string
+  category?: string
+  context_tags?: string[]
+}
+
+/**
+ * Populates default interventions for a new coach from template tables
+ * @param supabase - Supabase client
+ * @param coachId - UUID of the newly created coach
+ */
+async function populateDefaultInterventions(supabase: SupabaseClient, coachId: string) {
+  try {
+    // 1. Fetch all default craving interventions
+    const { data: defaultCravingInterventions, error: cravingError } = await supabase
+      .from('default_craving_interventions')
+      .select('*')
+    
+    if (cravingError) {
+      console.error('Error fetching default craving interventions:', cravingError)
+      return
+    }
+    
+    // 2. Fetch all default energy interventions
+    const { data: defaultEnergyInterventions, error: energyError } = await supabase
+      .from('default_energy_interventions')
+      .select('*')
+    
+    if (energyError) {
+      console.error('Error fetching default energy interventions:', energyError)
+      return
+    }
+    
+    // 3. Insert default craving interventions for the coach
+    if (defaultCravingInterventions && defaultCravingInterventions.length > 0) {
+      const cravingInterventionsToInsert = defaultCravingInterventions.map((intervention: DefaultIntervention) => ({
+        coach_id: coachId,
+        name: intervention.name,
+        description: intervention.description,
+        category: intervention.category,
+        context_tags: intervention.context_tags,
+        success_rate: null,
+        active: true
+      }))
+      
+      const { error: insertCravingError } = await supabase
+        .from('craving_interventions')
+        .insert(cravingInterventionsToInsert)
+      
+      if (insertCravingError) {
+        console.error('Error inserting default craving interventions:', insertCravingError)
+      }
+    }
+    
+    // 4. Insert default energy interventions for the coach
+    if (defaultEnergyInterventions && defaultEnergyInterventions.length > 0) {
+      const energyInterventionsToInsert = defaultEnergyInterventions.map((intervention: DefaultIntervention) => ({
+        coach_id: coachId,
+        name: intervention.name,
+        description: intervention.description,
+        category: intervention.category,
+        context_tags: intervention.context_tags,
+        success_rate: null,
+        active: true
+      }))
+      
+      const { error: insertEnergyError } = await supabase
+        .from('energy_interventions')
+        .insert(energyInterventionsToInsert)
+      
+      if (insertEnergyError) {
+        console.error('Error inserting default energy interventions:', insertEnergyError)
+      }
+    }
+    
+    console.log(`Successfully populated default interventions for coach ${coachId}`)
+  } catch (error) {
+    console.error('Error in populateDefaultInterventions:', error)
+  }
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -38,6 +123,9 @@ export async function GET(request: Request) {
           console.error('Error creating coach record:', createError)
           return NextResponse.redirect(new URL('/auth/login?error=coach_creation_failed', request.url))
         }
+        
+        // Populate default interventions for the new coach
+        await populateDefaultInterventions(supabase, data.session.user.id)
       }
 
       // Successful authentication
