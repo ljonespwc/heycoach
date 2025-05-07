@@ -314,53 +314,6 @@ export function InterventionLibrary({
                 ))}
               </div>
             </div>
-            
-            {/* Tags filter */}
-            <div>
-              <h4 className="text-sm text-gray-500 mb-2">Tags</h4>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className={`text-xs px-2 py-1 rounded-full border ${
-                      activeTags.includes(tag)
-                        ? 'bg-primary/10 border-primary text-primary'
-                        : 'border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Active status filter */}
-            <div>
-              <h4 className="text-sm text-gray-500 mb-2">Status</h4>
-              <div className="space-y-2">
-                <button
-                  onClick={() => toggleActiveStatus(true)}
-                  className={`text-sm px-2 py-1 rounded-md w-full text-left ${
-                    showActive === true
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Active
-                </button>
-                <button
-                  onClick={() => toggleActiveStatus(false)}
-                  className={`text-sm px-2 py-1 rounded-md w-full text-left ${
-                    showActive === false
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Inactive
-                </button>
-              </div>
-            </div>
           </div>
         </div>
         
