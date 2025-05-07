@@ -207,8 +207,11 @@ export function InterventionLibrary({
 }: InterventionLibraryProps) {
   const [activeTab, setActiveTab] = useState<'craving' | 'energy'>('craving')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [activeTags, setActiveTags] = useState<string[]>([])
-  const [showActive, setShowActive] = useState<boolean | null>(null)
+  // We're keeping these state variables but not using their setters since we removed the UI elements
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [activeTags] = useState<string[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [showActive] = useState<boolean | null>(null)
   
   // Get unique categories from the current tab's interventions
   const interventions = activeTab === 'craving' ? cravingInterventions : energyInterventions
@@ -218,12 +221,8 @@ export function InterventionLibrary({
       .filter(Boolean) as string[]
   )).sort()
   
-  // Get unique tags from the current tab's interventions
-  const allTags = Array.from(new Set(
-    interventions
-      .flatMap(i => i.context_tags || [])
-      .filter(Boolean)
-  )).sort()
+  // We're not using tags filtering in the UI anymore, but keeping the code structure
+  // in case we need to re-enable it later
   
   // Filter interventions based on active filters
   const filteredInterventions = interventions.filter(intervention => {
@@ -248,19 +247,8 @@ export function InterventionLibrary({
     return true
   })
   
-  // Handle toggling a tag filter
-  const toggleTag = (tag: string) => {
-    setActiveTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag) 
-        : [...prev, tag]
-    )
-  }
-  
-  // Handle toggling active status filter
-  const toggleActiveStatus = (status: boolean | null) => {
-    setShowActive(prev => prev === status ? null : status)
-  }
+  // We've removed these filters from the UI but keeping the state
+  // in case we need to re-enable the filters later
   
   
   return (
