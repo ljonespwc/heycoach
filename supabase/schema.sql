@@ -17,8 +17,15 @@ CREATE TABLE IF NOT EXISTS clients (
     id uuid PRIMARY KEY,
     coach_id uuid NOT NULL REFERENCES coaches(id),
     full_name text,
-    weight_goal numeric,
+    email text,
+    birth_date date,
+    gender text,
+    current_weight numeric,
+    desired_weight numeric,
     habit_objectives jsonb,
+    engagement_start_date date DEFAULT CURRENT_DATE,
+    status text DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    notes text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
