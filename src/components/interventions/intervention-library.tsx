@@ -247,6 +247,11 @@ export function InterventionLibrary({
     return true
   })
   
+  // Sort interventions alphabetically by name
+  const sortedInterventions = [...filteredInterventions].sort((a, b) => 
+    a.name.localeCompare(b.name)
+  )
+  
   // We've removed these filters from the UI but keeping the state
   // in case we need to re-enable the filters later
   
@@ -308,7 +313,7 @@ export function InterventionLibrary({
         {/* Intervention list */}
         <div className="flex-1">
           <InterventionList 
-            interventions={filteredInterventions}
+            interventions={sortedInterventions}
             type={activeTab}
           />
         </div>
