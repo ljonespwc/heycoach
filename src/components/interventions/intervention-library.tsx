@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from '@/components/ui/use-toast'
 import { BaseIntervention, CravingIntervention, EnergyIntervention } from '@/types/intervention'
-import { createClient } from '@/lib/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Helper function to get category color
 function getCategoryColor(category: string | null) {
@@ -78,10 +78,22 @@ interface InterventionListProps {
 
 function InterventionList({ interventions, type }: InterventionListProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
-  const supabase = createClient()
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
+  
+  // Initialize Supabase client only on the client side
+  useEffect(() => {
+    import('@/lib/supabase/client').then(module => {
+      setSupabase(module.createClient())
+    })
+  }, [])
   
   // Toggle the active status of an intervention
   const toggleActive = async (intervention: BaseIntervention) => {
+    if (!supabase) {
+      toast.error('Unable to update intervention at this time. Please try again.')
+      return
+    }
+    
     const newStatus = !intervention.active
     setUpdatingIds(prev => new Set(prev).add(intervention.id))
     
