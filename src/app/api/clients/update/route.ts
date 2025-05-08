@@ -79,8 +79,22 @@ export async function POST(request: Request) {
     
     if (clientError) throw clientError
 
-    // Parse trigger foods from JSON string
-    const parsedTriggerFoods = JSON.parse(trigger_foods as string) as TriggerFood[]
+    // Handle trigger foods - check if it's already an object or a JSON string
+    let parsedTriggerFoods: TriggerFood[];
+    
+    try {
+      // If it's a string, parse it as JSON
+      if (typeof trigger_foods === 'string') {
+        parsedTriggerFoods = JSON.parse(trigger_foods) as TriggerFood[];
+      } else {
+        // If it's already an object (FormData can sometimes parse JSON automatically)
+        parsedTriggerFoods = trigger_foods as unknown as TriggerFood[];
+      }
+    } catch (error) {
+      console.error('Error parsing trigger foods:', error);
+      // Fallback to empty array if parsing fails
+      parsedTriggerFoods = [];
+    }
     
     // Handle trigger foods with a more selective approach
     // First, identify which foods to keep and which are new
