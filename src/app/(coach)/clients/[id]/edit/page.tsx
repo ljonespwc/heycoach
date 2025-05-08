@@ -44,13 +44,13 @@ export default async function EditClientPage({ params }: PageProps) {
   // Get client's trigger foods
   const { data: triggerFoods } = await supabase
     .from('trigger_foods')
-    .select('food_name')
+    .select('id, food_name')
     .eq('client_id', clientId)
 
   // Add trigger foods to client object
   const clientWithTriggerFoods = {
     ...client,
-    trigger_foods: triggerFoods?.map(item => item.food_name) || []
+    trigger_foods: triggerFoods || []
   }
 
   return (

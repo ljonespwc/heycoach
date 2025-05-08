@@ -2,7 +2,7 @@
 
 import { useState, useRef, KeyboardEvent } from 'react'
 import { toast } from '@/components/ui/use-toast'
-import { Client } from '@/types/client'
+import { Client, TriggerFood } from '@/types/client'
 import { formatISO } from 'date-fns'
 
 interface ClientFormProps {
@@ -12,7 +12,7 @@ interface ClientFormProps {
 
 export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [triggerFoods, setTriggerFoods] = useState<string[]>(client?.trigger_foods || [])
+  const [triggerFoods, setTriggerFoods] = useState<TriggerFood[]>(client?.trigger_foods || [])
   const [newTriggerFood, setNewTriggerFood] = useState('')
   const [habitObjectives, setHabitObjectives] = useState<string[]>(
     client?.habit_objectives ? Object.keys(client.habit_objectives) : []
@@ -84,15 +84,20 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   function handleAddTriggerFood(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && newTriggerFood.trim()) {
       e.preventDefault()
-      if (!triggerFoods.includes(newTriggerFood.trim())) {
-        setTriggerFoods([...triggerFoods, newTriggerFood.trim()])
+      // Check if this food name already exists in the array
+      if (!triggerFoods.some(item => item.food_name === newTriggerFood.trim())) {
+        // For new trigger foods, we don't have an ID yet, so use a temporary one
+        setTriggerFoods([...triggerFoods, { 
+          id: `temp-${Date.now()}`, 
+          food_name: newTriggerFood.trim() 
+        }])
       }
       setNewTriggerFood('')
     }
   }
 
-  function handleRemoveTriggerFood(food: string) {
-    setTriggerFoods(triggerFoods.filter(f => f !== food))
+  function handleRemoveTriggerFood(foodId: string) {
+    setTriggerFoods(triggerFoods.filter(f => f.id !== foodId))
   }
   
   function handleAddHabitObjective(e: KeyboardEvent<HTMLInputElement>) {
@@ -346,15 +351,15 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
           </div>
           {triggerFoods.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
-              {triggerFoods.map((food, index) => (
+              {triggerFoods.map((food) => (
                 <span 
-                  key={`${food}-${index}`} 
+                  key={food.id} 
                   className="px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full flex items-center"
                 >
-                  {food}
+                  {food.food_name}
                   <button
                     type="button"
-                    onClick={() => handleRemoveTriggerFood(food)}
+                    onClick={() => handleRemoveTriggerFood(food.id)}
                     className="ml-1.5 text-amber-700 hover:text-amber-900"
                   >
                     &times;

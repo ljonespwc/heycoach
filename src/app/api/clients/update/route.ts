@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { TriggerFood } from '@/types/client'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -78,34 +79,55 @@ export async function POST(request: Request) {
     
     if (clientError) throw clientError
 
-    // Handle trigger foods - first delete existing ones
-    const { error: deleteError } = await supabase
-      .from('trigger_foods')
-      .delete()
-      .eq('client_id', id)
+    // Parse trigger foods from JSON string
+    const parsedTriggerFoods = JSON.parse(trigger_foods as string) as TriggerFood[]
     
-    if (deleteError) {
-      console.error('Error deleting existing trigger foods:', deleteError)
-      // Continue even if deletion fails
+    // Handle trigger foods with a more selective approach
+    // First, identify which foods to keep and which are new
+    const existingFoods = parsedTriggerFoods.filter((food: TriggerFood) => !food.id.startsWith('temp-'))
+    const newFoods = parsedTriggerFoods.filter((food: TriggerFood) => food.id.startsWith('temp-'))
+    
+    // Get IDs of existing foods to keep
+    const foodIdsToKeep = existingFoods.map((food: TriggerFood) => food.id)
+    
+    // Delete only the foods that are no longer in the list
+    if (foodIdsToKeep.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('trigger_foods')
+        .delete()
+        .eq('client_id', id)
+        .not('id', 'in', `(${foodIdsToKeep.join(',')})`) // Keep these IDs
+      
+      if (deleteError) {
+        console.error('Error deleting removed trigger foods:', deleteError)
+        // Continue even if deletion fails
+      }
+    } else {
+      // If no foods to keep, delete all
+      const { error: deleteAllError } = await supabase
+        .from('trigger_foods')
+        .delete()
+        .eq('client_id', id)
+      
+      if (deleteAllError) {
+        console.error('Error deleting all trigger foods:', deleteAllError)
+      }
     }
 
     // Add new trigger foods if any
-    if (trigger_foods.length > 0) {
-      // Remove duplicates from trigger_foods array
-      const uniqueTriggerFoods = Array.from(new Set(trigger_foods)) as string[]
-      
-      const triggerFoodsData = uniqueTriggerFoods.map((food) => ({
+    if (newFoods.length > 0) {
+      const newFoodsData = newFoods.map((food: TriggerFood) => ({
         client_id: id,
-        food_name: food,
+        food_name: food.food_name,
         category: null // Category could be added in a future enhancement
       }))
 
       const { error: triggerFoodsError } = await supabase
         .from('trigger_foods')
-        .insert(triggerFoodsData)
+        .insert(newFoodsData)
       
       if (triggerFoodsError) {
-        console.error('Error adding trigger foods:', triggerFoodsError)
+        console.error('Error adding new trigger foods:', triggerFoodsError)
         // Continue even if trigger foods insertion fails
       }
     }
