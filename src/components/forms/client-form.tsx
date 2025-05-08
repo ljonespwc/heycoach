@@ -304,7 +304,7 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
                   onClick={() => handleAddCommonHabit(habit)}
                   className="px-2 py-1 bg-gray-50 text-gray-700 text-xs rounded-full border border-gray-200 hover:bg-gray-100"
                 >
-                  + {habit.replace(/_/g, ' ')}
+                  + {habit.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 </button>
               ))}
           </div>
@@ -317,7 +317,7 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
                   key={habit} 
                   className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full flex items-center"
                 >
-                  {habit.replace(/_/g, ' ')}
+                  {habit.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   <button
                     type="button"
                     onClick={() => handleRemoveHabitObjective(habit)}
