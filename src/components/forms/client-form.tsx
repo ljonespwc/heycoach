@@ -346,9 +346,9 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
           </div>
           {triggerFoods.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
-              {triggerFoods.map((food) => (
+              {triggerFoods.map((food, index) => (
                 <span 
-                  key={food} 
+                  key={`${food}-${index}`} 
                   className="px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full flex items-center"
                 >
                   {food}

@@ -137,8 +137,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <div>
               <h3 className="text-sm font-medium text-gray-700">Trigger Foods</h3>
               <div className="mt-2 flex flex-wrap gap-2">
-                {triggerFoods.map((item) => (
-                  <span key={item.food_name} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                {triggerFoods.map((item, index) => (
+                  <span key={`${item.food_name}-${index}`} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
                     {item.food_name}
                   </span>
                 ))}

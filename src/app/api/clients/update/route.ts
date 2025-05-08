@@ -91,7 +91,10 @@ export async function POST(request: Request) {
 
     // Add new trigger foods if any
     if (trigger_foods.length > 0) {
-      const triggerFoodsData = trigger_foods.map((food: string) => ({
+      // Remove duplicates from trigger_foods array
+      const uniqueTriggerFoods = Array.from(new Set(trigger_foods)) as string[]
+      
+      const triggerFoodsData = uniqueTriggerFoods.map((food) => ({
         client_id: id,
         food_name: food,
         category: null // Category could be added in a future enhancement
