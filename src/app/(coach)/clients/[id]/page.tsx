@@ -2,7 +2,14 @@ import { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { format } from 'date-fns'
+import { 
+  ArrowLeftIcon, 
+  UserCircleIcon, 
+  ScaleIcon,
+  BookOpenIcon,
+  FireIcon
+} from '@heroicons/react/24/outline'
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -66,90 +73,115 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             {client.email && <p className="text-gray-600">{client.email}</p>}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Personal Information</h3>
-              <div className="mt-2 space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                <UserCircleIcon className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold text-gray-800">Personal Information</h3>
+              </div>
+              <div className="space-y-3">
                 {client.birth_date && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Birth Date:</span>
-                    <span className="text-gray-900">{client.birth_date}</span>
+                    <span className="text-gray-900 font-medium">
+                      {format(new Date(client.birth_date), 'MMMM d, yyyy')}
+                    </span>
                   </div>
                 )}
                 {client.gender && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Gender:</span>
-                    <span className="text-gray-900">{client.gender}</span>
+                    <span className="text-gray-900 font-medium">
+                      {client.gender.charAt(0).toUpperCase() + client.gender.slice(1)}
+                    </span>
                   </div>
                 )}
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600">Status:</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     client.status === 'active' 
                       ? 'bg-green-100 text-green-700' 
                       : 'bg-gray-100 text-gray-700'
                   }`}>
-                    {client.status}
+                    {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                   </span>
                 </div>
               </div>
             </div>
             
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Weight Information</h3>
-              <div className="mt-2 space-y-2">
+            <div className="bg-white rounded-lg border border-border shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                <ScaleIcon className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold text-gray-800">Weight Information</h3>
+              </div>
+              <div className="space-y-3">
                 {client.current_weight && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Current Weight:</span>
-                    <span className="text-gray-900">{client.current_weight}</span>
+                    <span className="text-gray-900 font-medium">{client.current_weight}</span>
                   </div>
                 )}
                 {client.desired_weight && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Desired Weight:</span>
-                    <span className="text-gray-900">{client.desired_weight}</span>
+                    <span className="text-gray-900 font-medium">{client.desired_weight}</span>
                   </div>
                 )}
                 {client.engagement_start_date && (
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600">Started:</span>
-                    <span className="text-gray-900">{client.engagement_start_date}</span>
+                    <span className="text-gray-900 font-medium">
+                      {format(new Date(client.engagement_start_date), 'MMMM d, yyyy')}
+                    </span>
                   </div>
                 )}
               </div>
             </div>
           </div>
           
-          {client.habit_objectives && Object.keys(client.habit_objectives).length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Habit Objectives</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {Object.keys(client.habit_objectives).map((habit) => (
-                  <span key={habit} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
-                    {habit.replace(/_/g, ' ')}
-                  </span>
-                ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            {client.habit_objectives && Object.keys(client.habit_objectives).length > 0 && (
+              <div className="bg-white rounded-lg border border-border shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <BookOpenIcon className="h-5 w-5 text-primary" />
+                  <h3 className="text-base font-semibold text-gray-800">Habit Objectives</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(client.habit_objectives).map((habit) => (
+                    <span key={habit} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                      {habit.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-          
-          {triggerFoods && triggerFoods.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Trigger Foods</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {triggerFoods.map((item, index) => (
-                  <span key={`${item.food_name}-${index}`} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
-                    {item.food_name}
-                  </span>
-                ))}
+            )}
+            
+            {triggerFoods && triggerFoods.length > 0 && (
+              <div className="bg-white rounded-lg border border-border shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                  <FireIcon className="h-5 w-5 text-primary" />
+                  <h3 className="text-base font-semibold text-gray-800">Trigger Foods</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {triggerFoods.map((item, index) => (
+                    <span key={`${item.food_name}-${index}`} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                      {item.food_name}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           
           {client.notes && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Notes</h3>
-              <p className="mt-2 text-gray-600 whitespace-pre-wrap">{client.notes}</p>
+            <div className="bg-white rounded-lg border border-border shadow-sm p-5 mt-6">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <h3 className="text-base font-semibold text-gray-800">Notes</h3>
+              </div>
+              <p className="text-gray-600 whitespace-pre-wrap">{client.notes}</p>
             </div>
           )}
         </div>
