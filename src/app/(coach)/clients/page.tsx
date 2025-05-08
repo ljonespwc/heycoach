@@ -49,7 +49,7 @@ function ClientCard({ client }: { client: Client }) {
           {client.habit_objectives && Object.keys(client.habit_objectives).length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {Object.keys(client.habit_objectives).map((habit) => (
-                <span key={habit} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                <span key={habit} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
                   {habit.replace(/_/g, ' ')}
                 </span>
               ))}

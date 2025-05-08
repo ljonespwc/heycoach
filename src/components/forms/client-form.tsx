@@ -14,8 +14,24 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [triggerFoods, setTriggerFoods] = useState<string[]>(client?.trigger_foods || [])
   const [newTriggerFood, setNewTriggerFood] = useState('')
+  const [habitObjectives, setHabitObjectives] = useState<string[]>(
+    client?.habit_objectives ? Object.keys(client.habit_objectives) : []
+  )
+  const [newHabitObjective, setNewHabitObjective] = useState('')
   const [isActive, setIsActive] = useState(client?.status !== 'inactive')
   const formRef = useRef<HTMLFormElement>(null)
+  
+  // Predefined list of common habit objectives
+  const commonHabitObjectives = [
+    'reduce_sugar',
+    'increase_vegetables',
+    'daily_exercise',
+    'reduce_alcohol',
+    'meal_planning',
+    'improve_sleep',
+    'drink_water',
+    'mindful_eating'
+  ]
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -28,15 +44,11 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
     formData.append('trigger_foods', JSON.stringify(triggerFoods))
 
     // Add habit objectives as JSON
-    const habitObjectives: Record<string, boolean> = {}
-    const habitFields = form.querySelectorAll('input[name^="habit_"]')
-    habitFields.forEach((field) => {
-      if (field instanceof HTMLInputElement && field.checked) {
-        const habitName = field.name.replace('habit_', '')
-        habitObjectives[habitName] = true
-      }
+    const habitObjectivesObj: Record<string, boolean> = {}
+    habitObjectives.forEach((habit) => {
+      habitObjectivesObj[habit] = true
     })
-    formData.append('habit_objectives', JSON.stringify(habitObjectives))
+    formData.append('habit_objectives', JSON.stringify(habitObjectivesObj))
 
     try {
       const endpoint = isNewClient ? '/api/clients/create' : '/api/clients/update'
@@ -81,6 +93,27 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
 
   function handleRemoveTriggerFood(food: string) {
     setTriggerFoods(triggerFoods.filter(f => f !== food))
+  }
+  
+  function handleAddHabitObjective(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && newHabitObjective.trim()) {
+      e.preventDefault()
+      const formattedHabit = newHabitObjective.trim().toLowerCase().replace(/\s+/g, '_')
+      if (!habitObjectives.includes(formattedHabit)) {
+        setHabitObjectives([...habitObjectives, formattedHabit])
+      }
+      setNewHabitObjective('')
+    }
+  }
+
+  function handleRemoveHabitObjective(habit: string) {
+    setHabitObjectives(habitObjectives.filter(h => h !== habit))
+  }
+  
+  function handleAddCommonHabit(habit: string) {
+    if (!habitObjectives.includes(habit)) {
+      setHabitObjectives([...habitObjectives, habit])
+    }
   }
 
   return (
@@ -239,70 +272,58 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
 
       {/* Habit Objectives */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 mb-2">
+        <label htmlFor="habit_objective_input" className="block text-sm font-medium text-gray-900 mb-2">
           Habit Objectives
         </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="space-y-2">
           <div className="flex items-center">
             <input
-              type="checkbox"
-              id="habit_reduce_sugar"
-              name="habit_reduce_sugar"
-              defaultChecked={client?.habit_objectives?.reduce_sugar === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
+              type="text"
+              id="habit_objective_input"
+              value={newHabitObjective}
+              onChange={(e) => setNewHabitObjective(e.target.value)}
+              onKeyDown={handleAddHabitObjective}
+              className="w-full px-3 py-2 border border-border rounded-lg bg-background text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Type a habit objective and press Enter"
             />
-            <label htmlFor="habit_reduce_sugar" className="ml-2 text-sm text-gray-900">Reduce Sugar</label>
           </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="habit_increase_vegetables"
-              name="habit_increase_vegetables"
-              defaultChecked={client?.habit_objectives?.increase_vegetables === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
-            />
-            <label htmlFor="habit_increase_vegetables" className="ml-2 text-sm text-gray-900">Increase Vegetables</label>
+          
+          {/* Common habit objectives */}
+          <div className="flex flex-wrap gap-2">
+            {commonHabitObjectives
+              .filter(habit => !habitObjectives.includes(habit))
+              .map(habit => (
+                <button
+                  key={habit}
+                  type="button"
+                  onClick={() => handleAddCommonHabit(habit)}
+                  className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100 hover:bg-blue-100"
+                >
+                  + {habit.replace(/_/g, ' ')}
+                </button>
+              ))}
           </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="habit_daily_exercise"
-              name="habit_daily_exercise"
-              defaultChecked={client?.habit_objectives?.daily_exercise === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
-            />
-            <label htmlFor="habit_daily_exercise" className="ml-2 text-sm text-gray-900">Daily Exercise</label>
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="habit_reduce_alcohol"
-              name="habit_reduce_alcohol"
-              defaultChecked={client?.habit_objectives?.reduce_alcohol === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
-            />
-            <label htmlFor="habit_reduce_alcohol" className="ml-2 text-sm text-gray-900">Reduce Alcohol</label>
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="habit_meal_planning"
-              name="habit_meal_planning"
-              defaultChecked={client?.habit_objectives?.meal_planning === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
-            />
-            <label htmlFor="habit_meal_planning" className="ml-2 text-sm text-gray-900">Meal Planning</label>
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="habit_improve_sleep"
-              name="habit_improve_sleep"
-              defaultChecked={client?.habit_objectives?.improve_sleep === true}
-              className="h-4 w-4 text-primary focus:ring-primary border-border"
-            />
-            <label htmlFor="habit_improve_sleep" className="ml-2 text-sm text-gray-900">Improve Sleep</label>
-          </div>
+          
+          {/* Selected habit objectives */}
+          {habitObjectives.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {habitObjectives.map((habit) => (
+                <span 
+                  key={habit} 
+                  className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full flex items-center"
+                >
+                  {habit.replace(/_/g, ' ')}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveHabitObjective(habit)}
+                    className="ml-1.5 text-blue-700 hover:text-blue-900"
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

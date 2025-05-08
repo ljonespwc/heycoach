@@ -125,7 +125,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <h3 className="text-sm font-medium text-gray-700">Habit Objectives</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {Object.keys(client.habit_objectives).map((habit) => (
-                  <span key={habit} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                  <span key={habit} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
                     {habit.replace(/_/g, ' ')}
                   </span>
                 ))}
