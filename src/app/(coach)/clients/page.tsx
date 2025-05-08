@@ -50,7 +50,7 @@ function ClientCard({ client }: { client: Client }) {
             <div className="flex flex-wrap gap-1 mt-2">
               {Object.keys(client.habit_objectives).map((habit) => (
                 <span key={habit} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
-                  {habit.replace(/_/g, ' ')}
+                  {habit.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 </span>
               ))}
             </div>
