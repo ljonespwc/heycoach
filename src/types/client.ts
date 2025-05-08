@@ -12,4 +12,5 @@ export interface Client {
   status: 'active' | 'inactive';
   notes: string | null;
   created_at: string;
+  trigger_foods?: string[];
 }
