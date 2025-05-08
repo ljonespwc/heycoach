@@ -14,6 +14,7 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [triggerFoods, setTriggerFoods] = useState<string[]>(client?.trigger_foods || [])
   const [newTriggerFood, setNewTriggerFood] = useState('')
+  const [isActive, setIsActive] = useState(client?.status !== 'inactive')
   const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -200,32 +201,39 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
         />
       </div>
 
-      {/* Status - Required */}
+      {/* Status */}
       <div>
         <label className="block text-sm font-medium text-gray-900 mb-2">
-          Status <span className="text-red-500">*</span>
+          Status
         </label>
         <div className="flex items-center space-x-2">
-          <input
-            type="radio"
-            id="status_active"
-            name="status"
-            value="active"
-            defaultChecked={client?.status !== 'inactive'}
-            required
-            className="h-4 w-4 text-primary focus:ring-primary border-border"
+          <input 
+            type="hidden" 
+            id="status" 
+            name="status" 
+            value={isActive ? 'active' : 'inactive'} 
           />
-          <label htmlFor="status_active" className="text-sm text-gray-900">Active</label>
-          
-          <input
-            type="radio"
-            id="status_inactive"
-            name="status"
-            value="inactive"
-            defaultChecked={client?.status === 'inactive'}
-            className="ml-4 h-4 w-4 text-primary focus:ring-primary border-border"
-          />
-          <label htmlFor="status_inactive" className="text-sm text-gray-900">Inactive</label>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setIsActive(!isActive)
+            }}
+            className={`
+              relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+              ${isActive ? 'bg-green-500' : 'bg-gray-200'}
+            `}
+          >
+            <span
+              className={`
+                inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                ${isActive ? 'translate-x-6' : 'translate-x-1'}
+              `}
+            />
+          </button>
+          <span className="text-sm text-gray-700">
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
         </div>
       </div>
 
