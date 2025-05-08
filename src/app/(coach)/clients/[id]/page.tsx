@@ -3,7 +3,6 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
-import { Client } from '@/types/client'
 
 export const generateMetadata = (): Metadata => {
   return {
