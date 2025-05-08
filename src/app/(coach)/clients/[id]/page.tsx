@@ -51,7 +51,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="p-6 bg-white rounded-lg border border-border">
         <div className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">{client.full_name}</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-xl font-semibold text-gray-900">{client.full_name}</h2>
+              <Link 
+                href={`/clients/${client.id}/edit`} 
+                className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                <span>Edit</span>
+              </Link>
+            </div>
             {client.email && <p className="text-gray-600">{client.email}</p>}
           </div>
           
