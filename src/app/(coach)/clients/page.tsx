@@ -77,11 +77,22 @@ export default async function ClientsPage() {
   }
 
   // Get coach's clients
-  const { data: clients } = await supabase
+  const { data: rawClients } = await supabase
     .from('clients')
     .select('*')
-    .eq('coach_id', user.id)
-    .order('full_name') as { data: Client[] }
+    .eq('coach_id', user.id) as { data: Client[] }
+  
+  // Sort clients: active first, then by last name
+  const clients = rawClients?.sort((a, b) => {
+    // First sort by status (active first)
+    if (a.status === 'active' && b.status !== 'active') return -1;
+    if (a.status !== 'active' && b.status === 'active') return 1;
+    
+    // Then sort by last name
+    const aLastName = a.full_name.split(' ').pop() || '';
+    const bLastName = b.full_name.split(' ').pop() || '';
+    return aLastName.localeCompare(bLastName);
+  })
 
   return (
     <div className="space-y-6">
