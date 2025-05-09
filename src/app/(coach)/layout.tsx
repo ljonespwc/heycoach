@@ -27,14 +27,14 @@ export default function CoachLayout({
             <SidebarNav />
           </div>
           <div className="p-4 flex justify-center">
-            <div className="relative h-[42px] w-[48px]">
+            <div className="relative h-[100px] w-[100px]">
               <Image
                 src="/images/logo-main.png"
                 alt="HeyCoach"
                 fill
                 style={{ objectFit: 'contain' }}
                 priority
-                sizes="48px"
+                sizes="100px"
               />
             </div>
           </div>
