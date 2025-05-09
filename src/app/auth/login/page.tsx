@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import Image from 'next/image'
 
 export default async function LoginPage() {
   const signInWithEmail = async (formData: FormData) => {
@@ -51,21 +52,29 @@ export default async function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-600 to-magenta-500">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
-        <h1 className="mb-8 text-center text-3xl font-bold text-gray-900">Welcome to HeyCoach</h1>
+        <div className="mb-8 flex justify-center">
+          <div className="relative h-[300px] w-[300px]">
+            <Image
+              src="/images/logo-main.png"
+              alt="HeyCoach Logo"
+              fill
+              style={{ objectFit: 'contain' }}
+              priority
+              sizes="300px"
+            />
+          </div>
+        </div>
         
         {/* Email Sign In Form */}
         <form action={signInWithEmail} className="mb-6 space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email address
-            </label>
             <input
               type="email"
               name="email"
               id="email"
               required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500 text-gray-900"
-              placeholder="you@example.com"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-purple-500 focus:outline-none focus:ring-purple-500 text-gray-900"
+              placeholder="Enter your email"
             />
           </div>
           <button
