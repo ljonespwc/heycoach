@@ -208,9 +208,7 @@ export function InterventionLibrary({
   const [activeTab, setActiveTab] = useState<'craving' | 'energy'>('craving')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   // We're keeping these state variables but not using their setters since we removed the UI elements
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeTags] = useState<string[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [showActive] = useState<boolean | null>(null)
   
   // Get unique categories from the current tab's interventions

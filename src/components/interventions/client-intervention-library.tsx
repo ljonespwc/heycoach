@@ -82,17 +82,6 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [clientInterventions, setClientInterventions] = useState<Record<string, boolean>>({})
   
-  // Initialize Supabase client only on the client side
-  useEffect(() => {
-    import('@/lib/supabase/client').then(module => {
-      const client = module.createClient()
-      setSupabase(client)
-      
-      // Fetch client-specific intervention settings
-      fetchClientInterventions(client)
-    })
-  }, [clientId, type])
-  
   // Fetch client-specific intervention settings
   const fetchClientInterventions = async (client: SupabaseClient) => {
     try {
@@ -106,7 +95,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
       
       // Create a map of intervention_id to active status
       const interventionMap: Record<string, boolean> = {}
-      data.forEach(item => {
+      data.forEach((item: { intervention_id: string; active: boolean }) => {
         interventionMap[item.intervention_id] = item.active
       })
       
@@ -115,6 +104,17 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
       console.error('Error fetching client interventions:', error)
     }
   }
+  
+  // Initialize Supabase client only on the client side
+  useEffect(() => {
+    import('@/lib/supabase/client').then(module => {
+      const client = module.createClient()
+      setSupabase(client)
+      
+      // Fetch client-specific intervention settings
+      fetchClientInterventions(client)
+    })
+  }, [clientId, type]) // Removing fetchClientInterventions from deps to avoid infinite loop
   
   // Toggle the active status of an intervention for this client
   const toggleActive = async (intervention: BaseIntervention) => {

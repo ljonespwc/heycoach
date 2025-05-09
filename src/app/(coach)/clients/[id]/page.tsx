@@ -8,11 +8,8 @@ import {
   UserCircleIcon, 
   ScaleIcon,
   BookOpenIcon,
-  FireIcon,
-  Cog6ToothIcon
+  FireIcon
 } from '@heroicons/react/24/outline'
-import { ClientInterventionLibrary } from '@/components/interventions/client-intervention-library'
-import { CravingIntervention, EnergyIntervention } from '@/types/intervention'
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -42,18 +39,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (clientError || !client) {
     return notFound()
   }
-  
-  // Get coach's craving interventions
-  const { data: cravingInterventions } = await supabase
-    .from('craving_interventions')
-    .select('*')
-    .eq('coach_id', user.id) as { data: CravingIntervention[] }
-    
-  // Get coach's energy interventions
-  const { data: energyInterventions } = await supabase
-    .from('energy_interventions')
-    .select('*')
-    .eq('coach_id', user.id) as { data: EnergyIntervention[] }
 
   return (
     <div className="space-y-6">
