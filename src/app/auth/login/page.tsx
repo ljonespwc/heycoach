@@ -53,14 +53,14 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-600 to-magenta-500">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
         <div className="mb-8 flex justify-center">
-          <div className="relative h-[300px] w-[300px]">
+          <div className="relative h-[350px] w-[350px]">
             <Image
               src="/images/logo-main.png"
               alt="HeyCoach Logo"
               fill
               style={{ objectFit: 'contain' }}
               priority
-              sizes="300px"
+              sizes="350px"
             />
           </div>
         </div>

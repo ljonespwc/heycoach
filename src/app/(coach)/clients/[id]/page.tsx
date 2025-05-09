@@ -8,8 +8,11 @@ import {
   UserCircleIcon, 
   ScaleIcon,
   BookOpenIcon,
-  FireIcon
+  FireIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline'
+import { ClientInterventionLibrary } from '@/components/interventions/client-intervention-library'
+import { CravingIntervention, EnergyIntervention } from '@/types/intervention'
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -39,8 +42,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (clientError || !client) {
     return notFound()
   }
-
-  // Trigger foods are now stored directly in the client record
+  
+  // Get coach's craving interventions
+  const { data: cravingInterventions } = await supabase
+    .from('craving_interventions')
+    .select('*')
+    .eq('coach_id', user.id) as { data: CravingIntervention[] }
+    
+  // Get coach's energy interventions
+  const { data: energyInterventions } = await supabase
+    .from('energy_interventions')
+    .select('*')
+    .eq('coach_id', user.id) as { data: EnergyIntervention[] }
 
   return (
     <div className="space-y-6">
@@ -51,6 +64,24 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Client Details</h1>
       </div>
       
+      {/* Tabs */}
+      <div className="border-b border-border">
+        <div className="flex space-x-8">
+          <button
+            className="py-2 px-1 border-b-2 border-primary text-primary font-medium text-sm"
+          >
+            Client Details
+          </button>
+          <Link 
+            href={`/clients/${client.id}/interventions`}
+            className="py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm"
+          >
+            Interventions
+          </Link>
+        </div>
+      </div>
+      
+      {/* Client Details Tab Content */}
       <div className="p-6 bg-white rounded-lg border border-border">
         <div className="space-y-4">
           <div>
