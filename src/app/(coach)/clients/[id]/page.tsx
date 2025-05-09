@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { 
   ArrowLeftIcon, 
   UserCircleIcon, 
@@ -127,7 +127,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Started:</span>
                     <span className="text-gray-900 font-medium">
-                      {format(new Date(client.engagement_start_date), 'MMMM d, yyyy')}
+                      {format(parseISO(client.engagement_start_date), 'MMMM d, yyyy')}
                     </span>
                   </div>
                 )}
