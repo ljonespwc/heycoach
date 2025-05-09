@@ -46,6 +46,68 @@ export default async function ClientInterventionsPage({ params }: { params: Prom
     .from('energy_interventions')
     .select('*')
     .eq('coach_id', user.id) as { data: EnergyIntervention[] }
+    
+  // Initialize client interventions if needed (server-side)
+  // This ensures all interventions have a record in client_interventions
+  try {
+    // Get existing client interventions
+    const { data: existingInterventions } = await supabase
+      .from('client_interventions')
+      .select('intervention_id, intervention_type')
+      .eq('client_id', clientId)
+    
+    // Create a map of existing interventions
+    const existingMap = new Map()
+    if (existingInterventions) {
+      existingInterventions.forEach((item: { intervention_id: string, intervention_type: string }) => {
+        existingMap.set(`${item.intervention_type}_${item.intervention_id}`, true)
+      })
+    }
+    
+    // Prepare records to insert
+    const recordsToInsert = []
+    
+    // Add craving interventions that don't exist yet
+    if (cravingInterventions) {
+      for (const intervention of cravingInterventions) {
+        if (!existingMap.has(`craving_${intervention.id}`)) {
+          recordsToInsert.push({
+            client_id: clientId,
+            intervention_id: intervention.id,
+            intervention_type: 'craving',
+            active: true,
+            times_used: 0,
+            favorite: false
+          })
+        }
+      }
+    }
+    
+    // Add energy interventions that don't exist yet
+    if (energyInterventions) {
+      for (const intervention of energyInterventions) {
+        if (!existingMap.has(`energy_${intervention.id}`)) {
+          recordsToInsert.push({
+            client_id: clientId,
+            intervention_id: intervention.id,
+            intervention_type: 'energy',
+            active: true,
+            times_used: 0,
+            favorite: false
+          })
+        }
+      }
+    }
+    
+    // Insert new records if there are any
+    if (recordsToInsert.length > 0) {
+      await supabase
+        .from('client_interventions')
+        .insert(recordsToInsert)
+    }
+  } catch (error) {
+    console.error('Error initializing client interventions:', error)
+  }
 
   return (
     <div className="space-y-6">

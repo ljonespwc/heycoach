@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { toast } from '@/components/ui/use-toast'
 import { BaseIntervention, CravingIntervention, EnergyIntervention } from '@/types/intervention'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
+import { PencilSquareIcon } from '@heroicons/react/24/outline'
+import { EditClientInterventionModal } from './edit-client-intervention-modal'
 
 // Helper function to get category color
 function getCategoryColor(category: string | null) {
@@ -70,6 +74,21 @@ function InterventionTabs({
   )
 }
 
+// Client intervention type definition
+interface ClientIntervention {
+  id?: string
+  client_id: string
+  intervention_id: string
+  intervention_type: 'craving' | 'energy'
+  times_used: number
+  last_used_at: string | null
+  effectiveness_rating: number | null
+  coach_notes: string | null
+  favorite: boolean
+  active: boolean
+  coach_disabled: boolean
+}
+
 // List component
 interface InterventionListProps {
   interventions: BaseIntervention[]
@@ -80,23 +99,24 @@ interface InterventionListProps {
 function InterventionList({ interventions, type, clientId }: InterventionListProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
-  const [clientInterventions, setClientInterventions] = useState<Record<string, boolean>>({})
+  const [clientInterventions, setClientInterventions] = useState<Record<string, Partial<ClientIntervention>>>({})
+  const [editingIntervention, setEditingIntervention] = useState<BaseIntervention | null>(null)
   
   // Fetch client-specific intervention settings
   const fetchClientInterventions = async (client: SupabaseClient) => {
     try {
       const { data, error } = await client
         .from('client_interventions')
-        .select('intervention_id, active')
+        .select('*')
         .eq('client_id', clientId)
         .eq('intervention_type', type)
       
       if (error) throw error
       
-      // Create a map of intervention_id to active status
-      const interventionMap: Record<string, boolean> = {}
-      data.forEach((item: { intervention_id: string; active: boolean }) => {
-        interventionMap[item.intervention_id] = item.active
+      // Create a map of intervention_id to intervention data
+      const interventionMap: Record<string, Partial<ClientIntervention>> = {}
+      data.forEach((item: ClientIntervention) => {
+        interventionMap[item.intervention_id] = item
       })
       
       setClientInterventions(interventionMap)
@@ -113,8 +133,36 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
       
       // Fetch client-specific intervention settings
       fetchClientInterventions(client)
+      
+      // Initialize client interventions if needed
+      initializeClientInterventions()
     })
-  }, [clientId, type]) // Removing fetchClientInterventions from deps to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, type]) // Removing fetchClientInterventions and initializeClientInterventions from deps to avoid infinite loop
+  
+  // Initialize client interventions for this client
+  const initializeClientInterventions = async () => {
+    try {
+      const response = await fetch(`/api/clients/${clientId}/interventions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error initializing client interventions:', errorData)
+      } else {
+        // Refresh the client interventions after initialization
+        if (supabase) {
+          fetchClientInterventions(supabase)
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing client interventions:', error)
+    }
+  }
   
   // Toggle the active status of an intervention for this client
   const toggleActive = async (intervention: BaseIntervention) => {
@@ -125,42 +173,94 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
     
     // Determine if this intervention is already in the client_interventions table
     const isInClientTable = intervention.id in clientInterventions
-    const newStatus = isInClientTable ? !clientInterventions[intervention.id] : !intervention.active
+    const newStatus = isInClientTable ? !getActiveStatus(intervention) : !intervention.active
     
     setUpdatingIds(prev => new Set(prev).add(intervention.id))
     
     try {
-      if (isInClientTable) {
-        // Update existing record
-        const { error } = await supabase
-          .from('client_interventions')
-          .update({ active: newStatus })
-          .eq('client_id', clientId)
-          .eq('intervention_id', intervention.id)
-          .eq('intervention_type', type)
-        
-        if (error) throw error
-      } else {
-        // Create new record
-        const { error } = await supabase
-          .from('client_interventions')
-          .insert({
-            client_id: clientId,
-            intervention_id: intervention.id,
-            intervention_type: type,
-            active: newStatus
-          })
-        
-        if (error) throw error
+      const response = await fetch(`/api/clients/${clientId}/interventions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          intervention_id: intervention.id,
+          intervention_type: type,
+          active: newStatus
+        }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update intervention')
       }
+      
+      await response.json() // Read the response body
       
       // Update local state
       setClientInterventions(prev => ({
         ...prev,
-        [intervention.id]: newStatus
+        [intervention.id]: {
+          ...prev[intervention.id],
+          active: newStatus
+        }
       }))
       
       toast.success(`${intervention.name} is now ${newStatus ? 'active' : 'inactive'} for this client.`)
+    } catch (error) {
+      console.error('Error updating client intervention:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update intervention')
+    } finally {
+      setUpdatingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(intervention.id)
+        return newSet
+      })
+    }
+  }
+  
+  // Toggle favorite status
+  const toggleFavorite = async (intervention: BaseIntervention) => {
+    if (!supabase) {
+      toast.error('Unable to update intervention at this time. Please try again.')
+      return
+    }
+    
+    const isInClientTable = intervention.id in clientInterventions
+    const newFavoriteStatus = isInClientTable && clientInterventions[intervention.id].favorite ? false : true
+    
+    setUpdatingIds(prev => new Set(prev).add(intervention.id))
+    
+    try {
+      const response = await fetch(`/api/clients/${clientId}/interventions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          intervention_id: intervention.id,
+          intervention_type: type,
+          favorite: newFavoriteStatus
+        }),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update intervention')
+      }
+      
+      await response.json() // Read the response body
+      
+      // Update local state
+      setClientInterventions(prev => ({
+        ...prev,
+        [intervention.id]: {
+          ...prev[intervention.id],
+          favorite: newFavoriteStatus
+        }
+      }))
+      
+      toast.success(`${intervention.name} is now ${newFavoriteStatus ? 'favorited' : 'unfavorited'}.`)
     } catch (error) {
       console.error('Error updating client intervention:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to update intervention')
@@ -177,10 +277,39 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
   const getActiveStatus = (intervention: BaseIntervention): boolean => {
     // If the intervention is in the client_interventions table, use that status
     if (intervention.id in clientInterventions) {
-      return clientInterventions[intervention.id]
+      return clientInterventions[intervention.id].active !== undefined ? 
+        clientInterventions[intervention.id].active as boolean : 
+        intervention.active
     }
     // Otherwise, use the global intervention status
     return intervention.active
+  }
+  
+  // Get the favorite status for an intervention
+  const getFavoriteStatus = (intervention: BaseIntervention): boolean => {
+    // If the intervention is in the client_interventions table, use that status
+    if (intervention.id in clientInterventions) {
+      return clientInterventions[intervention.id].favorite || false
+    }
+    // Otherwise, default to false
+    return false
+  }
+  
+  // Get the effectiveness rating for an intervention
+  const getEffectivenessRating = (intervention: BaseIntervention): number | null => {
+    // If the intervention is in the client_interventions table, use that rating
+    if (intervention.id in clientInterventions) {
+      return clientInterventions[intervention.id].effectiveness_rating || null
+    }
+    // Otherwise, default to null
+    return null
+  }
+  
+  // Handle intervention update
+  const handleInterventionUpdated = () => {
+    if (supabase) {
+      fetchClientInterventions(supabase)
+    }
   }
   
   if (interventions.length === 0) {
@@ -192,15 +321,31 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
   }
   
   return (
-    <div className="space-y-4">
-      {interventions.map(intervention => (
+    <>
+      <div className="space-y-4">
+        {interventions.map(intervention => (
         <div 
           key={intervention.id} 
           className="p-4 bg-card rounded-lg border border-border"
         >
           <div className="flex justify-between items-start">
             <div className="space-y-2">
-              <h3 className="font-medium text-gray-900">{intervention.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-gray-900">{intervention.name}</h3>
+                {/* Favorite button */}
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(intervention)}
+                  disabled={updatingIds.has(intervention.id)}
+                  className="text-gray-400 hover:text-yellow-500 focus:outline-none"
+                >
+                  {getFavoriteStatus(intervention) ? (
+                    <StarIconSolid className="h-5 w-5 text-yellow-500" />
+                  ) : (
+                    <StarIconOutline className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
               
               {/* Category and tags */}
               <div className="flex flex-wrap gap-2 mt-1">
@@ -249,9 +394,80 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
           <div className="mt-3 text-sm text-gray-600">
             <p>{intervention.description}</p>
           </div>
+          
+          {/* Effectiveness rating if available */}
+          {getEffectivenessRating(intervention) && (
+            <div className="mt-3 flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Effectiveness:</span>
+              <span className="text-sm font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">
+                {getEffectivenessRating(intervention)}/10
+              </span>
+            </div>
+          )}
+          
+          {/* Times used if available */}
+          {intervention.id in clientInterventions && 
+           typeof clientInterventions[intervention.id] === 'object' &&
+           clientInterventions[intervention.id] !== null &&
+           'times_used' in clientInterventions[intervention.id] &&
+           (clientInterventions[intervention.id].times_used as number) > 0 && (
+            <div className="mt-1 text-sm text-gray-500">
+              Used {clientInterventions[intervention.id].times_used} times
+              {clientInterventions[intervention.id].last_used_at && (
+                <span> · Last used: {
+                  new Date(clientInterventions[intervention.id].last_used_at as string).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })
+                }</span>
+              )}
+            </div>
+          )}
+          
+          {/* Coach notes if available */}
+          {intervention.id in clientInterventions && 
+           typeof clientInterventions[intervention.id] === 'object' &&
+           clientInterventions[intervention.id] !== null &&
+           'coach_notes' in clientInterventions[intervention.id] &&
+           clientInterventions[intervention.id].coach_notes && (
+            <div className="mt-3 p-2 bg-gray-50 rounded-md border border-gray-100">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Notes:</span> {clientInterventions[intervention.id].coach_notes}
+              </p>
+            </div>
+          )}
+          
+          {/* Edit button */}
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              onClick={() => setEditingIntervention(intervention)}
+            >
+              <PencilSquareIcon className="h-4 w-4 mr-1" />
+              Edit Details
+            </button>
+          </div>
         </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      
+      {/* Edit intervention modal */}
+      {editingIntervention && (
+        <EditClientInterventionModal
+          open={!!editingIntervention}
+          onOpenChange={(open) => {
+            if (!open) setEditingIntervention(null)
+          }}
+          intervention={editingIntervention}
+          interventionType={type}
+          clientId={clientId}
+          clientIntervention={editingIntervention.id in clientInterventions ? clientInterventions[editingIntervention.id] : {}}
+          onInterventionUpdated={handleInterventionUpdated}
+        />
+      )}
+    </>
   )
 }
 
