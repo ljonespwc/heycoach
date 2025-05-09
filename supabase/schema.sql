@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS coach_settings (
 );
 
 CREATE TABLE IF NOT EXISTS clients (
-    id uuid PRIMARY KEY,
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     coach_id uuid NOT NULL REFERENCES coaches(id),
     full_name text,
     email text,

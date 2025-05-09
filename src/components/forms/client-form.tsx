@@ -356,7 +356,7 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
                   key={food.id} 
                   className="px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full flex items-center"
                 >
-                  {food.food_name}
+                  {food.food_name.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   <button
                     type="button"
                     onClick={() => handleRemoveTriggerFood(food.id)}
