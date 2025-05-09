@@ -22,7 +22,7 @@ export default function CoachLayout({
     <div className={`min-h-screen bg-background ${inter.className}`}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-64 bg-card border-r border-border flex flex-col">
+        <aside className="w-64 bg-[#f4f4e8] border-r border-border flex flex-col">
           <div className="flex-1 p-4">
             <SidebarNav />
           </div>

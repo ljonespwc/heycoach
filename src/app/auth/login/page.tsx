@@ -51,7 +51,7 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-600 to-magenta-500">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+      <div className="w-full max-w-md rounded-lg bg-[#f4f4e8] p-8 shadow-lg">
         <div className="mb-8 flex justify-center">
           <div className="relative h-[350px] w-[350px]">
             <Image
@@ -90,7 +90,7 @@ export default async function LoginPage() {
             <div className="w-full border-t border-gray-300"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-500">Or</span>
+            <span className="bg-[#f4f4e8] px-2 text-gray-500">Or</span>
           </div>
         </div>
 
