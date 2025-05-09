@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS clients (
     gender text,
     current_weight numeric,
     desired_weight numeric,
-    habit_objectives jsonb,
+    habit_objectives jsonb DEFAULT '{}',
+    trigger_foods jsonb DEFAULT '{}',
     engagement_start_date date DEFAULT CURRENT_DATE,
     status text DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
     notes text,
@@ -88,14 +89,6 @@ CREATE TABLE IF NOT EXISTS default_energy_interventions (
     description text NOT NULL,
     category text,
     context_tags text[]
-);
-
-CREATE TABLE IF NOT EXISTS trigger_foods (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-    client_id uuid NOT NULL REFERENCES clients(id),
-    food_name text NOT NULL,
-    category text,
-    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Add unique constraint for coach_settings

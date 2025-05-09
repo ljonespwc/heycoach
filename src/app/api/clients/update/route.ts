@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { TriggerFood } from '@/types/client'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -25,7 +24,17 @@ export async function POST(request: Request) {
   const status = formData.get('status') as string
   const notes = formData.get('notes') as string
   const habit_objectives = formData.get('habit_objectives') ? JSON.parse(formData.get('habit_objectives') as string) : {}
-  const trigger_foods = formData.get('trigger_foods') ? JSON.parse(formData.get('trigger_foods') as string) : []
+  
+  // Parse trigger_foods from form data
+  let trigger_foods = null
+  const triggerFoodsData = formData.get('trigger_foods')
+  if (triggerFoodsData) {
+    try {
+      trigger_foods = JSON.parse(triggerFoodsData as string)
+    } catch {
+      // Silent error handling
+    }
+  }
 
   // Simple validations
   if (!id) {
@@ -68,6 +77,7 @@ export async function POST(request: Request) {
         current_weight,
         desired_weight,
         habit_objectives,
+        trigger_foods,
         engagement_start_date: engagement_start_date || null,
         status,
         notes: notes || null
@@ -79,72 +89,7 @@ export async function POST(request: Request) {
     
     if (clientError) throw clientError
 
-    // Handle trigger foods - check if it's already an object or a JSON string
-    let parsedTriggerFoods: TriggerFood[];
-    
-    try {
-      // If it's a string, parse it as JSON
-      if (typeof trigger_foods === 'string') {
-        parsedTriggerFoods = JSON.parse(trigger_foods) as TriggerFood[];
-      } else {
-        // If it's already an object (FormData can sometimes parse JSON automatically)
-        parsedTriggerFoods = trigger_foods as unknown as TriggerFood[];
-      }
-    } catch (error) {
-      console.error('Error parsing trigger foods:', error);
-      // Fallback to empty array if parsing fails
-      parsedTriggerFoods = [];
-    }
-    
-    // Handle trigger foods with a more selective approach
-    // First, identify which foods to keep and which are new
-    const existingFoods = parsedTriggerFoods.filter((food: TriggerFood) => !food.id.startsWith('temp-'))
-    const newFoods = parsedTriggerFoods.filter((food: TriggerFood) => food.id.startsWith('temp-'))
-    
-    // Get IDs of existing foods to keep
-    const foodIdsToKeep = existingFoods.map((food: TriggerFood) => food.id)
-    
-    // Delete only the foods that are no longer in the list
-    if (foodIdsToKeep.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('trigger_foods')
-        .delete()
-        .eq('client_id', id)
-        .not('id', 'in', `(${foodIdsToKeep.join(',')})`) // Keep these IDs
-      
-      if (deleteError) {
-        console.error('Error deleting removed trigger foods:', deleteError)
-        // Continue even if deletion fails
-      }
-    } else {
-      // If no foods to keep, delete all
-      const { error: deleteAllError } = await supabase
-        .from('trigger_foods')
-        .delete()
-        .eq('client_id', id)
-      
-      if (deleteAllError) {
-        console.error('Error deleting all trigger foods:', deleteAllError)
-      }
-    }
-
-    // Add new trigger foods if any
-    if (newFoods.length > 0) {
-      const newFoodsData = newFoods.map((food: TriggerFood) => ({
-        client_id: id,
-        food_name: food.food_name,
-        category: null // Category could be added in a future enhancement
-      }))
-
-      const { error: triggerFoodsError } = await supabase
-        .from('trigger_foods')
-        .insert(newFoodsData)
-      
-      if (triggerFoodsError) {
-        console.error('Error adding new trigger foods:', triggerFoodsError)
-        // Continue even if trigger foods insertion fails
-      }
-    }
+    // No need to handle trigger foods separately - they're now stored directly in the client record
 
     return NextResponse.json(client)
   } catch (error) {

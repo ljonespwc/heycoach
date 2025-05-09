@@ -2,7 +2,7 @@
 
 import { useState, useRef, KeyboardEvent } from 'react'
 import { toast } from '@/components/ui/use-toast'
-import { Client, TriggerFood } from '@/types/client'
+import { Client } from '@/types/client'
 import { formatISO } from 'date-fns'
 
 interface ClientFormProps {
@@ -12,7 +12,11 @@ interface ClientFormProps {
 
 export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [triggerFoods, setTriggerFoods] = useState<TriggerFood[]>(client?.trigger_foods || [])
+  
+  // Initialize trigger foods exactly like habit objectives
+  const [triggerFoods, setTriggerFoods] = useState<string[]>(
+    client?.trigger_foods ? Object.keys(client.trigger_foods) : []
+  )
   const [newTriggerFood, setNewTriggerFood] = useState('')
   const [habitObjectives, setHabitObjectives] = useState<string[]>(
     client?.habit_objectives ? Object.keys(client.habit_objectives) : []
@@ -40,8 +44,12 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
     const form = event.currentTarget
     const formData = new FormData(form)
     
-    // Add trigger foods to form data
-    formData.append('trigger_foods', JSON.stringify(triggerFoods))
+    // Add trigger foods as JSON
+    const triggerFoodsObj: Record<string, boolean> = {}
+    triggerFoods.forEach((food) => {
+      triggerFoodsObj[food] = true
+    })
+    formData.append('trigger_foods', JSON.stringify(triggerFoodsObj))
 
     // Add habit objectives as JSON
     const habitObjectivesObj: Record<string, boolean> = {}
@@ -84,20 +92,15 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
   function handleAddTriggerFood(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && newTriggerFood.trim()) {
       e.preventDefault()
-      // Check if this food name already exists in the array
-      if (!triggerFoods.some(item => item.food_name === newTriggerFood.trim())) {
-        // For new trigger foods, we don't have an ID yet, so use a temporary one
-        setTriggerFoods([...triggerFoods, { 
-          id: `temp-${Date.now()}`, 
-          food_name: newTriggerFood.trim() 
-        }])
+      if (!triggerFoods.includes(newTriggerFood.trim())) {
+        setTriggerFoods([...triggerFoods, newTriggerFood.trim()])
       }
       setNewTriggerFood('')
     }
   }
 
-  function handleRemoveTriggerFood(foodId: string) {
-    setTriggerFoods(triggerFoods.filter(f => f.id !== foodId))
+  function handleRemoveTriggerFood(food: string) {
+    setTriggerFoods(triggerFoods.filter(f => f !== food))
   }
   
   function handleAddHabitObjective(e: KeyboardEvent<HTMLInputElement>) {
@@ -353,13 +356,13 @@ export function ClientForm({ client, isNewClient = false }: ClientFormProps) {
             <div className="flex flex-wrap gap-2 mt-2">
               {triggerFoods.map((food) => (
                 <span 
-                  key={food.id} 
+                  key={food} 
                   className="px-2 py-1 bg-amber-50 text-amber-700 text-xs rounded-full flex items-center"
                 >
-                  {food.food_name.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  {food.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   <button
                     type="button"
-                    onClick={() => handleRemoveTriggerFood(food.id)}
+                    onClick={() => handleRemoveTriggerFood(food)}
                     className="ml-1.5 text-amber-700 hover:text-amber-900"
                   >
                     &times;

@@ -36,21 +36,11 @@ export default async function EditClientPage({ params }: PageProps) {
     .eq('id', clientId)
     .eq('coach_id', user.id)
     .single()
+    
+  // Get client data
 
   if (clientError || !client) {
     return notFound()
-  }
-
-  // Get client's trigger foods
-  const { data: triggerFoods } = await supabase
-    .from('trigger_foods')
-    .select('id, food_name')
-    .eq('client_id', clientId)
-
-  // Add trigger foods to client object
-  const clientWithTriggerFoods = {
-    ...client,
-    trigger_foods: triggerFoods || []
   }
 
   return (
@@ -63,7 +53,7 @@ export default async function EditClientPage({ params }: PageProps) {
       </div>
       
       <div className="p-6 bg-white rounded-lg border border-border">
-        <ClientForm client={clientWithTriggerFoods} />
+        <ClientForm client={client} />
       </div>
     </div>
   )

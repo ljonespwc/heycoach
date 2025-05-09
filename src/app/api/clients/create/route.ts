@@ -23,7 +23,17 @@ export async function POST(request: Request) {
   const status = formData.get('status') as string
   const notes = formData.get('notes') as string
   const habit_objectives = formData.get('habit_objectives') ? JSON.parse(formData.get('habit_objectives') as string) : {}
-  const trigger_foods = formData.get('trigger_foods') ? JSON.parse(formData.get('trigger_foods') as string) : []
+  
+  // Parse trigger_foods from form data
+  let trigger_foods = {}
+  const triggerFoodsData = formData.get('trigger_foods')
+  if (triggerFoodsData) {
+    try {
+      trigger_foods = JSON.parse(triggerFoodsData as string)
+    } catch {
+      // Silent error handling
+    }
+  }
 
   // Simple validations
   if (!full_name?.trim()) {
@@ -52,6 +62,7 @@ export async function POST(request: Request) {
         current_weight,
         desired_weight,
         habit_objectives,
+        trigger_foods,
         engagement_start_date: engagement_start_date || null,
         status,
         notes: notes || null
@@ -61,23 +72,7 @@ export async function POST(request: Request) {
     
     if (clientError) throw clientError
 
-    // Add trigger foods if any
-    if (trigger_foods.length > 0 && client) {
-      const triggerFoodsData = trigger_foods.map((food: string) => ({
-        client_id: client.id,
-        food_name: food,
-        category: null // Category could be added in a future enhancement
-      }))
-
-      const { error: triggerFoodsError } = await supabase
-        .from('trigger_foods')
-        .insert(triggerFoodsData)
-      
-      if (triggerFoodsError) {
-        console.error('Error adding trigger foods:', triggerFoodsError)
-        // Continue even if trigger foods insertion fails
-      }
-    }
+    // No need to handle trigger foods separately - they're now stored directly in the client record
 
     return NextResponse.json(client)
   } catch (error) {

@@ -40,11 +40,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     return notFound()
   }
 
-  // Get client's trigger foods
-  const { data: triggerFoods } = await supabase
-    .from('trigger_foods')
-    .select('food_name')
-    .eq('client_id', clientId)
+  // Trigger foods are now stored directly in the client record
 
   return (
     <div className="space-y-6">
@@ -156,16 +152,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               </div>
             )}
             
-            {triggerFoods && triggerFoods.length > 0 && (
+            {client.trigger_foods && Object.keys(client.trigger_foods).length > 0 && (
               <div className="bg-white rounded-lg border border-border shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
                   <FireIcon className="h-5 w-5 text-primary" />
                   <h3 className="text-base font-semibold text-gray-800">Trigger Foods</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {triggerFoods.map((item, index) => (
-                    <span key={`${item.food_name}-${index}`} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
-                      {item.food_name.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  {Object.keys(client.trigger_foods).map((food) => (
+                    <span key={food} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                      {food.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </span>
                   ))}
                 </div>
