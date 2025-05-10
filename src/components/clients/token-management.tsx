@@ -17,7 +17,7 @@ export function TokenManagement({ client }: { client: Client }) {
           {client.access_token ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex-1 font-mono text-gray-800 text-sm bg-gray-50 p-2 rounded mr-2 truncate">
+                <div className="flex-1 font-mono text-gray-800 text-sm bg-gray-50 p-2 rounded mr-2 truncate max-w-[calc(100%-5rem)] overflow-hidden text-ellipsis">
                   {generateClientPortalUrl(client.access_token || '')}
                 </div>
                 <button
