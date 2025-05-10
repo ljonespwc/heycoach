@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Metadata } from 'next'
 
 // Metadata for PWA support
@@ -27,7 +27,9 @@ export default function ClientLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <main>{children}</main>
+      <Suspense fallback={<div>Loading...</div>}>
+        <main>{children}</main>
+      </Suspense>
     </div>
   )
 }

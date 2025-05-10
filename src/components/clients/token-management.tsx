@@ -1,8 +1,9 @@
 'use client'
 
 import { toast } from 'sonner'
-import { KeyIcon, ClipboardIcon } from '@heroicons/react/24/outline'
+import { KeyIcon, ClipboardIcon, LinkIcon } from '@heroicons/react/24/outline'
 import { Client } from '@/types/client'
+import { generateClientPortalUrl } from '@/lib/client-portal/url'
 
 export function TokenManagement({ client }: { client: Client }) {
   return (
@@ -16,19 +17,38 @@ export function TokenManagement({ client }: { client: Client }) {
           {client.access_token ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex-1 font-mono text-sm bg-gray-50 p-2 rounded mr-2 truncate">
-                  {client.access_token}
+                <div className="space-y-2 w-full">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 font-mono text-sm bg-gray-50 p-2 rounded mr-2 truncate">
+                      {client.access_token}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(client.access_token || '')
+                        toast.success('Access token copied to clipboard')
+                      }}
+                      className="p-2 text-gray-500 hover:text-gray-700"
+                      title="Copy token"
+                    >
+                      <ClipboardIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 text-sm bg-gray-50 p-2 rounded mr-2 truncate">
+                      {generateClientPortalUrl(client.access_token || '')}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(generateClientPortalUrl(client.access_token || ''))
+                        toast.success('Portal URL copied to clipboard')
+                      }}
+                      className="p-2 text-gray-500 hover:text-gray-700"
+                      title="Copy portal URL"
+                    >
+                      <LinkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(client.access_token || '')
-                    toast.success('Access token copied to clipboard')
-                  }}
-                  className="p-2 text-gray-500 hover:text-gray-700"
-                  title="Copy token"
-                >
-                  <ClipboardIcon className="h-5 w-5" />
-                </button>
               </div>
               <button
                 onClick={async () => {

@@ -33,13 +33,20 @@ export async function POST(request: NextRequest) {
     const token = randomBytes(32).toString('hex')
 
     // Update the client's access token
-    const { error: updateError } = await supabase
+    console.log('Updating token for client:', clientId)
+    const { data: updateData, error: updateError } = await supabase
       .from('clients')
       .update({ access_token: token })
       .eq('id', clientId)
       .eq('coach_id', user.id)
+      .select()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Error updating token:', updateError)
+      throw updateError
+    }
+
+    console.log('Token update result:', updateData)
 
     return NextResponse.json({ token })
   } catch (error) {

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS clients (
     engagement_start_date date DEFAULT CURRENT_DATE,
     status text DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
     notes text,
+    access_token text UNIQUE,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

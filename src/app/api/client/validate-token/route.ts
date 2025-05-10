@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     // Query the clients table to validate the access token
     const { data: client, error } = await supabase
       .from('clients')
-      .select('id, name, coach_id')
+      .select('id, full_name, coach_id')
       .eq('access_token', token)
       .single()
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const response = NextResponse.json({
       client: {
         id: client.id,
-        name: client.name,
+        name: client.full_name,
         coachId: client.coach_id
       }
     })

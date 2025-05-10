@@ -1,16 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { clientAuthMiddleware } from './middleware/client-auth'
 
 export async function middleware(request: NextRequest) {
-  // Check if this is a client route and handle client authentication
+  // Check if this is a client portal route
   if (request.nextUrl.pathname.startsWith('/client-portal')) {
-    const clientAuthResponse = clientAuthMiddleware(request)
-    if (clientAuthResponse !== NextResponse.next()) {
-      return clientAuthResponse
-    }
+    return NextResponse.next()
   }
 
+  // For all other routes, apply coach authentication
   const response = NextResponse.next({
     request: {
       headers: request.headers,
