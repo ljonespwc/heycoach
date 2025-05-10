@@ -185,7 +185,7 @@ export function EditClientInterventionModal({
                           value={effectivenessRating || ''}
                           onChange={(e) => setEffectivenessRating(e.target.value ? parseInt(e.target.value, 10) : null)}
                           placeholder="Rate from 1-10"
-                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium"
+                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium px-3 py-2"
                         />
                       </div>
                       
@@ -199,7 +199,7 @@ export function EditClientInterventionModal({
                           onChange={(e) => setCoachNotes(e.target.value)}
                           placeholder="Add notes about this intervention for this client"
                           rows={3}
-                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium"
+                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium px-3 py-2"
                         />
                       </div>
                       

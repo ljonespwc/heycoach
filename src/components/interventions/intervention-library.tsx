@@ -98,6 +98,7 @@ function InterventionList({ interventions, type }: InterventionListProps) {
     setUpdatingIds(prev => new Set(prev).add(intervention.id))
     
     try {
+      // Update the main intervention table
       const { error } = await supabase
         .from(`${type}_interventions`)
         .update({ active: newStatus })
@@ -105,6 +106,18 @@ function InterventionList({ interventions, type }: InterventionListProps) {
       
       if (error) {
         throw new Error(error.message)
+      }
+      
+      // Also update all client_interventions records for this intervention
+      const { error: clientInterventionsError } = await supabase
+        .from('client_interventions')
+        .update({ active: newStatus })
+        .eq('intervention_id', intervention.id)
+        .eq('intervention_type', type)
+      
+      if (clientInterventionsError) {
+        console.error('Error updating client interventions:', clientInterventionsError)
+        // Don't throw here to avoid blocking the main update
       }
       
       // Update the intervention in the UI
