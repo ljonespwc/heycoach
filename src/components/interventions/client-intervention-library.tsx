@@ -405,25 +405,44 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
             </div>
           )}
           
-          {/* Times used if available */}
-          {intervention.id in clientInterventions && 
-           typeof clientInterventions[intervention.id] === 'object' &&
-           clientInterventions[intervention.id] !== null &&
-           'times_used' in clientInterventions[intervention.id] &&
-           (clientInterventions[intervention.id].times_used as number) > 0 && (
-            <div className="mt-1 text-sm text-gray-500">
-              Used {clientInterventions[intervention.id].times_used} times
-              {clientInterventions[intervention.id].last_used_at && (
-                <span> · Last used: {
+          {/* Usage statistics */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {/* Suggested times */}
+            {intervention.id in clientInterventions && 
+             typeof clientInterventions[intervention.id] === 'object' &&
+             clientInterventions[intervention.id] !== null &&
+             'times_used' in clientInterventions[intervention.id] && (
+              <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+                Suggested {clientInterventions[intervention.id].times_used} times
+              </span>
+            )}
+            
+            {/* Used times (would be calculated from incidents table) */}
+            {intervention.id in clientInterventions && 
+             typeof clientInterventions[intervention.id] === 'object' &&
+             clientInterventions[intervention.id] !== null &&
+             'times_used' in clientInterventions[intervention.id] && (
+              <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full">
+                Used {Math.max(0, (clientInterventions[intervention.id].times_used as number) - 0)} times
+              </span>
+            )}
+            
+            {/* Last used date if available */}
+            {intervention.id in clientInterventions && 
+             typeof clientInterventions[intervention.id] === 'object' &&
+             clientInterventions[intervention.id] !== null &&
+             clientInterventions[intervention.id].last_used_at && (
+              <span className="text-xs px-2 py-1 bg-gray-50 text-gray-700 rounded-full">
+                Last used: {
                   new Date(clientInterventions[intervention.id].last_used_at as string).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric'
                   })
-                }</span>
-              )}
-            </div>
-          )}
+                }
+              </span>
+            )}
+          </div>
           
           {/* Coach notes if available */}
           {intervention.id in clientInterventions && 

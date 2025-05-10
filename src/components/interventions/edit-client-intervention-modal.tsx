@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/use-toast'
 import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import { BaseIntervention } from '@/types/intervention'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -49,7 +50,7 @@ export function EditClientInterventionModal({
     clientIntervention?.effectiveness_rating || null
   )
   const [coachNotes, setCoachNotes] = useState(clientIntervention?.coach_notes || '')
-  const [timesUsed, setTimesUsed] = useState(clientIntervention?.times_used || 0)
+  // No longer manually tracking times_used as it will be calculated from incidents
   const [active, setActive] = useState(
     clientIntervention?.active !== undefined ? clientIntervention.active : intervention.active
   )
@@ -83,7 +84,6 @@ export function EditClientInterventionModal({
           favorite,
           effectiveness_rating: effectivenessRating,
           coach_notes: coachNotes || null,
-          times_used: timesUsed,
           active
         }),
       })
@@ -139,11 +139,11 @@ export function EditClientInterventionModal({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-[#f4f4e8] px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
                 <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    className="rounded-md bg-[#f4f4e8] text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                     onClick={() => onOpenChange(false)}
                   >
                     <span className="sr-only">Close</span>
@@ -153,13 +153,13 @@ export function EditClientInterventionModal({
                 
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                    <Dialog.Title as="h3" className="text-lg font-semibold leading-6 text-gray-900">
                       Edit Intervention Details
                     </Dialog.Title>
                     
                     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-medium text-gray-900">{intervention.name}</h3>
+                        <h3 className="font-semibold text-gray-900 text-lg">{intervention.name}</h3>
                         <button
                           type="button"
                           onClick={() => setFavorite(!favorite)}
@@ -174,7 +174,7 @@ export function EditClientInterventionModal({
                       </div>
                       
                       <div className="space-y-1">
-                        <label htmlFor="effectiveness" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="effectiveness" className="block text-sm font-semibold text-gray-800">
                           Effectiveness Rating (1-10)
                         </label>
                         <input
@@ -185,12 +185,12 @@ export function EditClientInterventionModal({
                           value={effectivenessRating || ''}
                           onChange={(e) => setEffectivenessRating(e.target.value ? parseInt(e.target.value, 10) : null)}
                           placeholder="Rate from 1-10"
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium"
                         />
                       </div>
                       
                       <div className="space-y-1">
-                        <label htmlFor="coach-notes" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="coach-notes" className="block text-sm font-semibold text-gray-800">
                           Coach Notes
                         </label>
                         <textarea
@@ -199,22 +199,14 @@ export function EditClientInterventionModal({
                           onChange={(e) => setCoachNotes(e.target.value)}
                           placeholder="Add notes about this intervention for this client"
                           rows={3}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-400 shadow-sm focus:border-primary focus:ring-primary text-gray-900 font-medium"
                         />
                       </div>
                       
-                      <div className="space-y-1">
-                        <label htmlFor="times-used" className="block text-sm font-medium text-gray-700">
-                          Times Used
-                        </label>
-                        <input
-                          id="times-used"
-                          type="number"
-                          min="0"
-                          value={timesUsed}
-                          onChange={(e) => setTimesUsed(parseInt(e.target.value, 10) || 0)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                        />
+                      {/* Times Used field removed as requested - will be calculated from incidents */}
+                      <div className="flex items-center space-x-2 text-gray-600 text-sm bg-blue-50 p-2 rounded-md">
+                        <InformationCircleIcon className="h-5 w-5 text-blue-500" />
+                        <p>Usage statistics are tracked automatically when clients use this intervention</p>
                       </div>
                       
                       <div className="flex items-center space-x-2">
@@ -225,7 +217,7 @@ export function EditClientInterventionModal({
                           onChange={() => setActive(!active)}
                           className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                         />
-                        <label htmlFor="active-toggle" className="text-sm font-medium text-gray-700">
+                        <label htmlFor="active-toggle" className="text-sm font-semibold text-gray-800">
                           Active for this client
                         </label>
                       </div>
@@ -247,7 +239,7 @@ export function EditClientInterventionModal({
                         <button
                           type="button"
                           onClick={() => onOpenChange(false)}
-                          className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
+                          className="mt-3 inline-flex w-full justify-center rounded-md border border-gray-400 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
                         >
                           Cancel
                         </button>
