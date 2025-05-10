@@ -30,10 +30,21 @@ export default async function LoginPage() {
   const signInWithGoogle = async () => {
     'use server'
     const supabase = await createClient()
+    
+    // Create a more robust redirect URL that prioritizes the production domain
+    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || 
+      (process.env.NODE_ENV === 'production'
+        ? 'https://www.heycoach.health'
+        : process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000')}/auth/callback`
+    
+    console.log('Using redirect URL:', redirectTo)
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000').origin}/auth/callback`,
+        redirectTo,
         scopes: 'email profile',
         queryParams: {
           access_type: 'offline',
