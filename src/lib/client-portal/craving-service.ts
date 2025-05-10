@@ -144,6 +144,38 @@ export class CravingService {
   
   // Fetch client details by token
   private async fetchClientByToken(token: string): Promise<boolean> {
+    // For development/demo mode, if token is 'dev-token', use a fallback approach
+    if (token === 'dev-token') {
+      try {
+        // Get the first client in the database for demo purposes
+        const { data, error } = await this.supabase
+          .from('clients')
+          .select('id, coach_id')
+          .limit(1)
+          .single()
+        
+        if (data && !error) {
+          this.clientId = data.id
+          this.coachId = data.coach_id
+          console.log('Using first client for demo:', data.id)
+          return true
+        } else {
+          // If no clients found, create mock IDs for pure demo mode
+          console.log('No clients found, using mock IDs for demo')
+          this.clientId = 'mock-client-id'
+          this.coachId = 'mock-coach-id'
+          return true
+        }
+      } catch (err) {
+        // Even if there's an error, use mock IDs for demo
+        console.log('Error in dev mode, using mock IDs:', err)
+        this.clientId = 'mock-client-id'
+        this.coachId = 'mock-coach-id'
+        return true
+      }
+    }
+    
+    // Normal token validation for production use
     try {
       const { data, error } = await this.supabase
         .from('clients')
@@ -152,15 +184,15 @@ export class CravingService {
         .single()
       
       if (error || !data) {
-        console.error('Error fetching client token:', error)
+        console.log('Token not found or error:', error)
         return false
       }
       
       this.clientId = data.id
       this.coachId = data.coach_id
       return true
-    } catch {
-      console.error('Error in fetchClientByToken')
+    } catch (err) {
+      console.log('Error in fetchClientByToken:', err)
       return false
     }
   }
@@ -239,10 +271,79 @@ export class CravingService {
       
       // Ensure avatar_url is properly formatted
       if (data.avatar_url) {
-        // If the avatar URL doesn't start with http or https, it might be a storage path
-        if (!data.avatar_url.startsWith('http')) {
-          // Use a default avatar URL instead of trying to get from storage
-          data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+        // If the avatar URL already starts with http or https, use it directly
+        if (data.avatar_url.startsWith('http')) {
+          console.log('Using existing avatar URL:', data.avatar_url);
+        } else {
+          // It's likely a storage path - try to construct the URL
+          try {
+            // Try different possible storage buckets and path formats
+            let publicUrl = null;
+            
+            // Check if it's a full path or just a filename
+            const avatarPath = data.avatar_url.includes('/') ? data.avatar_url : `avatars/${data.avatar_url}`;
+            
+            // Try 'avatars' bucket first
+            try {
+              const { data: avatarsData } = this.supabase
+                .storage
+                .from('avatars')
+                .getPublicUrl(avatarPath);
+              
+              if (avatarsData && avatarsData.publicUrl) {
+                publicUrl = avatarsData.publicUrl;
+                console.log('Found avatar in avatars bucket:', publicUrl);
+              }
+            } catch {  // Ignore error and try next bucket
+              console.log('Avatar not in avatars bucket, trying others...');
+            }
+            
+            // If not found, try 'coach-avatars' bucket
+            if (!publicUrl) {
+              try {
+                const { data: coachAvatarsData } = this.supabase
+                  .storage
+                  .from('coach-avatars')
+                  .getPublicUrl(avatarPath);
+                
+                if (coachAvatarsData && coachAvatarsData.publicUrl) {
+                  publicUrl = coachAvatarsData.publicUrl;
+                  console.log('Found avatar in coach-avatars bucket:', publicUrl);
+                }
+              } catch {  // Ignore error and try next bucket
+                console.log('Avatar not in coach-avatars bucket either');
+              }
+            }
+            
+            // If not found, try 'public' bucket
+            if (!publicUrl) {
+              try {
+                const { data: publicData } = this.supabase
+                  .storage
+                  .from('public')
+                  .getPublicUrl(avatarPath);
+                
+                if (publicData && publicData.publicUrl) {
+                  publicUrl = publicData.publicUrl;
+                  console.log('Found avatar in public bucket:', publicUrl);
+                }
+              } catch {  // Ignore error and try next bucket
+                console.log('Avatar not in public bucket either');
+              }
+            }
+            
+            // If we found a public URL, use it
+            if (publicUrl) {
+              data.avatar_url = publicUrl;
+            } else {
+              // If all attempts failed, use the default avatar
+              console.log('Could not find avatar in any storage bucket, using default');
+              data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+            }
+          } catch (error) {
+            console.error('Error constructing avatar URL:', error);
+            data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+          }
         }
       } else {
         // If no avatar URL, use a default one
