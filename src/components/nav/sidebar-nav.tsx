@@ -6,8 +6,6 @@ import {
   HomeIcon, 
   UserCircleIcon,
   UsersIcon,
-  BoltIcon,
-  HeartIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 import { createClient } from '@/lib/supabase/client'
@@ -16,8 +14,6 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Profile', href: '/profile', icon: UserCircleIcon },
   { name: 'Clients', href: '/clients', icon: UsersIcon },
-  { name: 'Energy', href: '/energy', icon: BoltIcon },
-  { name: 'Cravings', href: '/cravings', icon: HeartIcon },
 ]
 
 export function SidebarNav() {
