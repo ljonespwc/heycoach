@@ -47,7 +47,6 @@ export default function CravingSosPage() {
           
           if (mounted) {
             if (sessionInfo.coach) {
-              console.log('Coach info received:', sessionInfo.coach)
               setCoach({
                 name: sessionInfo.coach.full_name || 'Your Coach',
                 avatarUrl: sessionInfo.coach.avatar_url || '',
@@ -114,8 +113,8 @@ export default function CravingSosPage() {
             }
           }
         }
-      } catch (error) {
-        console.error('Error initializing chat:', error)
+      } catch {
+        // Silent error handling
       }
     }
     

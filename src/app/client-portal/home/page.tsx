@@ -1,11 +1,17 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function ClientDashboard() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+  
+  useEffect(() => {
+    console.log('Client dashboard loaded with token:', token)
+  }, [token])
 
   return (
     <div className="space-y-8">
@@ -18,7 +24,10 @@ export default function ClientDashboard() {
 
       <div className="grid gap-4">
         <button
-          onClick={() => router.push('/client-portal/home/craving-sos')}
+          onClick={() => {
+            console.log('Navigating to craving-sos with token:', token);
+            router.push(token ? `/client-portal/home/craving-sos?token=${token}` : '/client-portal/home/craving-sos');
+          }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
           <h2 className="text-lg font-medium">🆘 Craving SOS</h2>
@@ -28,7 +37,10 @@ export default function ClientDashboard() {
         </button>
 
         <button
-          onClick={() => router.push('/client-portal/home/energy-boost')}
+          onClick={() => {
+            console.log('Navigating to energy-boost with token:', token);
+            router.push(token ? `/client-portal/home/energy-boost?token=${token}` : '/client-portal/home/energy-boost');
+          }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
           <h2 className="text-lg font-medium">⚡ Energy Boost</h2>

@@ -35,10 +35,14 @@ export async function POST(request: Request) {
     // Set a cookie with the client's ID
     // Create a new response with the client data
     const response = NextResponse.json({
+      valid: true,
+      clientId: client.id,
+      coachId: client.coach_id,
       client: {
         id: client.id,
         name: client.full_name,
-        coachId: client.coach_id
+        full_name: client.full_name,
+        coach_id: client.coach_id  // Use consistent property name
       }
     })
 

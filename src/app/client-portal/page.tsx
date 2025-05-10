@@ -11,6 +11,7 @@ export default function ClientPortalPage() {
 
   useEffect(() => {
     if (token) {
+      console.log('Token found in client portal page:', token);
       // Validate token
       fetch('/api/client/validate-token', {
         method: 'POST',
@@ -18,9 +19,14 @@ export default function ClientPortalPage() {
         body: JSON.stringify({ token })
       }).then(async (res) => {
         if (res.ok) {
-          // Token is valid, redirect to home
-          router.push('/client-portal/home')
+          console.log('Token validated successfully, redirecting to home with token');
+          // Token is valid, redirect to home WITH the token
+          router.push(`/client-portal/home?token=${token}`)
+        } else {
+          console.log('Token validation failed');
         }
+      }).catch(error => {
+        console.error('Error validating token:', error);
       })
     }
   }, [token, router])

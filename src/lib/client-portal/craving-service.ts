@@ -90,320 +90,288 @@ export class CravingService {
   
   private async initializeSession() {
     try {
-      // For now, use URL token parameter if available
+      // First, use URL token parameter if available
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       
       if (token) {
         // Validate token directly
-        await this.validateToken(token);
-        return;
+        const validated = await this.validateToken(token);
+        
+        if (validated) {
+          return;
+        }
       }
       
       // Otherwise check for existing session
-      const response = await fetch('/api/client-portal/auth')
-      const data = await response.json()
+      const response = await fetch('/api/client-portal/auth');
+      const data = await response.json();
       
       if (data.authenticated && data.client) {
-        this.clientId = data.client.id
-        this.coachId = data.client.coach_id
-      } else {
-        // For development, use a fallback client ID if no session exists
-        // In production, this would redirect to login
-        console.log('Using development fallback for client session')
-        await this.fetchClientByToken('dev-token')
+        this.clientId = data.client.id;
+        this.coachId = data.client.coach_id;
       }
+      // If no authenticated session, the user will need to log in
     } catch {
-      console.error('Error fetching client session')
+      // Silent error handling
     }
   }
   
   // Validate a client token
-  private async validateToken(token: string): Promise<boolean> {
+  async validateToken(token: string): Promise<boolean> {
     try {
-      const response = await fetch('/api/client-portal/auth', {
+      // Try client-portal auth endpoint first
+      const authResponse = await fetch('/api/client-portal/auth', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token })
-      })
+        body: JSON.stringify({ token }),
+      });
       
-      if (response.ok) {
-        // Token validated, fetch client details
-        await this.fetchClientByToken(token)
-        return true
+      if (authResponse.ok) {
+        const authData = await authResponse.json();
+        
+        if (authData.authenticated && authData.client) {
+          this.clientId = authData.client.id;
+          this.coachId = authData.client.coach_id;
+          return true;
+        }
       }
       
-      return false
+      // If that fails, try the direct token validation endpoint
+      const validationResponse = await fetch('/api/client/validate-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+      
+      if (validationResponse.ok) {
+        const validationData = await validationResponse.json();
+        
+        if (validationData.valid && validationData.client) {
+          this.clientId = validationData.client.id;
+          this.coachId = validationData.client.coachId;
+          return true;
+        }
+      }
+      
+      // If both API endpoints fail, try direct database lookup
+      const success = await this.fetchClientByToken(token);
+      
+      return success;
     } catch {
-      console.error('Error validating token')
-      return false
+      return false;
     }
   }
   
   // Fetch client details by token
   private async fetchClientByToken(token: string): Promise<boolean> {
-    // For development/demo mode, if token is 'dev-token', use a fallback approach
-    if (token === 'dev-token') {
-      try {
-        // Get the first client in the database for demo purposes
-        const { data, error } = await this.supabase
-          .from('clients')
-          .select('id, coach_id')
-          .limit(1)
-          .single()
-        
-        if (data && !error) {
-          this.clientId = data.id
-          this.coachId = data.coach_id
-          console.log('Using first client for demo:', data.id)
-          return true
-        } else {
-          // If no clients found, create mock IDs for pure demo mode
-          console.log('No clients found, using mock IDs for demo')
-          this.clientId = 'mock-client-id'
-          this.coachId = 'mock-coach-id'
-          return true
-        }
-      } catch (err) {
-        // Even if there's an error, use mock IDs for demo
-        console.log('Error in dev mode, using mock IDs:', err)
-        this.clientId = 'mock-client-id'
-        this.coachId = 'mock-coach-id'
-        return true
-      }
-    }
-    
-    // Normal token validation for production use
     try {
-      const { data, error } = await this.supabase
+      const { data, error: fetchError } = await this.supabase
         .from('clients')
-        .select('id, coach_id')
+        .select('id, coach_id, full_name')
         .eq('access_token', token)
         .single()
       
-      if (error || !data) {
-        console.log('Token not found or error:', error)
-        return false
+      if (fetchError) {
+        return false;
       }
       
-      this.clientId = data.id
-      this.coachId = data.coach_id
-      return true
-    } catch (err) {
-      console.log('Error in fetchClientByToken:', err)
-      return false
+      if (!data) {
+        return false;
+      }
+      
+      this.clientId = data.id;
+      
+      if (data.coach_id) {
+        this.coachId = data.coach_id;
+      }
+      
+      return true;
+    } catch {
+      return false;
     }
   }
   
-  // Fetch client details including coach ID
-  private async fetchClientDetails(): Promise<boolean> {
-    if (!this.clientId) return false
+  // Fetch client details
+  private async fetchClientDetails(): Promise<Client | null> {
+    if (!this.clientId) {
+      return null;
+    }
     
     try {
-      const { data, error } = await this.supabase
+      const { data, error: fetchError } = await this.supabase
         .from('clients')
-        .select('coach_id')
+        .select('*')
         .eq('id', this.clientId)
-        .single()
+        .single();
       
-      if (error || !data) {
-        console.error('Error fetching client details:', error)
-        return false
+      if (fetchError) {
+        return null;
       }
       
-      this.coachId = data.coach_id
-      return true
+      return data;
     } catch {
-      console.error('Error in fetchClientDetails')
-      return false
+      return null;
     }
   }
   
   // Get coach information
   async getCoachInfo(): Promise<Coach | null> {
-    if (!this.coachId) {
-      // If we don't have a coach ID yet, try to fetch client details first
-      await this.fetchClientDetails()
-      
-      // If we still don't have a coach ID, return a mock coach for demo purposes
-      if (!this.coachId) {
-        console.log('No coach ID available, using mock coach data');
-        return {
-          id: 'mock-coach-id',
-          full_name: 'Lance Dapperdan',
-          avatar_url: 'https://randomuser.me/api/portraits/men/32.jpg',
-          email: 'coach@example.com',
-          created_at: new Date().toISOString()
-        } as Coach;
-      }
-    }
-    
     try {
-      const { data, error } = await this.supabase
-        .from('coaches')
-        .select('*')
-        .eq('id', this.coachId)
-        .single()
-      
-      if (error) {
-        console.log('Error fetching coach information, using mock data');
-        return {
-          id: 'mock-coach-id',
-          full_name: 'Lance Dapperdan',
-          avatar_url: 'https://randomuser.me/api/portraits/men/32.jpg',
-          email: 'coach@example.com',
-          created_at: new Date().toISOString()
-        } as Coach;
+      // If we don't have a coach ID, try to get it from client details
+      if (!this.coachId) {
+        const clientDetails = await this.fetchClientDetails();
+        
+        if (clientDetails && clientDetails.coach_id) {
+          this.coachId = clientDetails.coach_id;
+        }
       }
       
-      if (!data) {
-        console.log('No coach data returned, using mock data');
-        return {
-          id: 'mock-coach-id',
-          full_name: 'Lance Dapperdan',
-          avatar_url: 'https://randomuser.me/api/portraits/men/32.jpg',
-          email: 'coach@example.com',
-          created_at: new Date().toISOString()
-        } as Coach;
+      // Still no coach ID, return null
+      if (!this.coachId) {
+        return null;
       }
       
-      // Ensure avatar_url is properly formatted
-      if (data.avatar_url) {
-        // If the avatar URL already starts with http or https, use it directly
-        if (data.avatar_url.startsWith('http')) {
-          console.log('Using existing avatar URL:', data.avatar_url);
-        } else {
-          // It's likely a storage path - try to construct the URL
-          try {
-            // Try different possible storage buckets and path formats
-            let publicUrl = null;
+      // Fetch coach data from coaches table
+      let data: Coach | null = null;
+      
+      // First check if there are any coaches in the database at all
+      const allCoachesResult = await this.supabase.from('coaches').select('*').limit(5);
+      
+      if (allCoachesResult.data && allCoachesResult.data.length > 0) {
+        // Coaches table exists and has data
+      } else {
+        // If no coaches found, try the users table instead
+        const usersResult = await this.supabase.from('users').select('*').limit(5);
+        
+        if (usersResult.data && usersResult.data.length > 0) {
+          // Try to find the coach in the users table
+          const coachInUsers = await this.supabase.from('users').select('*').eq('id', this.coachId).single();
+          
+          if (coachInUsers.data) {
+            // Convert users data to coach format
+            data = {
+              id: coachInUsers.data.id,
+              full_name: coachInUsers.data.full_name || 'Your Coach',
+              avatar_url: coachInUsers.data.avatar_url || 'https://ui-avatars.com/api/?name=Coach',
+              created_at: coachInUsers.data.created_at
+            };
             
-            // Check if it's a full path or just a filename
-            const avatarPath = data.avatar_url.includes('/') ? data.avatar_url : `avatars/${data.avatar_url}`;
-            
-            // Try 'avatars' bucket first
-            try {
-              const { data: avatarsData } = this.supabase
-                .storage
-                .from('avatars')
-                .getPublicUrl(avatarPath);
-              
-              if (avatarsData && avatarsData.publicUrl) {
-                publicUrl = avatarsData.publicUrl;
-                console.log('Found avatar in avatars bucket:', publicUrl);
-              }
-            } catch {  // Ignore error and try next bucket
-              console.log('Avatar not in avatars bucket, trying others...');
-            }
-            
-            // If not found, try 'coach-avatars' bucket
-            if (!publicUrl) {
-              try {
-                const { data: coachAvatarsData } = this.supabase
-                  .storage
-                  .from('coach-avatars')
-                  .getPublicUrl(avatarPath);
-                
-                if (coachAvatarsData && coachAvatarsData.publicUrl) {
-                  publicUrl = coachAvatarsData.publicUrl;
-                  console.log('Found avatar in coach-avatars bucket:', publicUrl);
-                }
-              } catch {  // Ignore error and try next bucket
-                console.log('Avatar not in coach-avatars bucket either');
-              }
-            }
-            
-            // If not found, try 'public' bucket
-            if (!publicUrl) {
-              try {
-                const { data: publicData } = this.supabase
-                  .storage
-                  .from('public')
-                  .getPublicUrl(avatarPath);
-                
-                if (publicData && publicData.publicUrl) {
-                  publicUrl = publicData.publicUrl;
-                  console.log('Found avatar in public bucket:', publicUrl);
-                }
-              } catch {  // Ignore error and try next bucket
-                console.log('Avatar not in public bucket either');
-              }
-            }
-            
-            // If we found a public URL, use it
-            if (publicUrl) {
-              data.avatar_url = publicUrl;
-            } else {
-              // If all attempts failed, use the default avatar
-              console.log('Could not find avatar in any storage bucket, using default');
-              data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
-            }
-          } catch (error) {
-            console.error('Error constructing avatar URL:', error);
-            data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+            return data;
           }
         }
-      } else {
-        // If no avatar URL, use a default one
-        data.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+        
+        // If all else fails, return hardcoded data
+        return {
+          id: this.coachId || 'fallback-coach-id',
+          full_name: 'Your Coach',
+          avatar_url: 'https://ui-avatars.com/api/?name=Coach',
+          created_at: new Date().toISOString()
+        };
+      }
+      // Now try to fetch the specific coach
+      const result = await this.supabase
+        .from('coaches')
+        .select('*')
+        .eq('id', this.coachId);
+      
+      // Check if we got any data back
+      if (result.error) {
+        return null;
       }
       
-      console.log('Coach data retrieved:', data);
-      return data as Coach;
+      if (!result.data || result.data.length === 0) {
+        return null;
+      }
+      
+      // Get the first coach from the result
+      const coachData = result.data[0];
+      
+      // Use the avatar URL directly from the database
+      // Only use a fallback if it's not provided
+      if (!coachData.avatar_url) {
+        coachData.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+      }
+      
+      return coachData as Coach;
     } catch {
-      console.log('Exception when fetching coach information, using mock data');
-      return {
-        id: 'mock-coach-id',
-        full_name: 'Lance Dapperdan',
-        avatar_url: 'https://randomuser.me/api/portraits/men/32.jpg',
-        email: 'coach@example.com',
-        created_at: new Date().toISOString()
-      } as Coach;
+      return null;
     }
   }
   
   // Get client information
   async getClientInfo(): Promise<Client | null> {
-    if (!this.clientId) return null
-    
-    const { data, error } = await this.supabase
-      .from('clients')
-      .select('*')
-      .eq('id', this.clientId)
-      .single()
-    
-    if (error || !data) {
-      console.error('Error fetching client information:', error)
-      return null
+    if (!this.clientId) {
+      return null;
     }
     
-    return data as Client
+    try {
+      const { data, error } = await this.supabase
+        .from('clients')
+        .select('*')
+        .eq('id', this.clientId)
+        .single()
+      
+      if (error) {
+        return null;
+      }
+      
+      if (!data) {
+        return null;
+      }
+      
+      return data;
+    } catch {
+      return null;
+    }
   }
   
   // Get both client and coach information
   async getSessionInfo(): Promise<{ client: Client | null, coach: Coach | null }> {
-    const clientPromise = this.getClientInfo()
-    const coachPromise = this.getCoachInfo()
+    // If we don't have client or coach ID, try to get them
+    if (!this.clientId || !this.coachId) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      if (token) {
+        await this.validateToken(token);
+      } else {
+        try {
+          const response = await fetch('/api/client-portal/auth');
+          const data = await response.json();
+          
+          if (data.authenticated && data.client) {
+            this.clientId = data.client.id;
+            this.coachId = data.client.coach_id;
+          }
+        } catch {
+          // Silent error handling
+        }
+      }
+    }
     
-    const [client, coach] = await Promise.all([clientPromise, coachPromise])
+    const clientPromise = this.getClientInfo();
+    const coachPromise = this.getCoachInfo();
     
-    return { client, coach }
+    const [client, coach] = await Promise.all([clientPromise, coachPromise]);
+    
+    return { client, coach };
   }
 
   // Create a new craving incident
   async createCravingIncident(): Promise<string | null> {
     // Check if we already have an incident ID to avoid duplicates
     if (this.incidentId) {
-      console.log('Using existing craving incident:', this.incidentId);
       return this.incidentId;
     }
     
     // For demo/development purposes, always create a mock incident ID
     // This avoids database errors if the table doesn't exist or permissions are incorrect
     const mockId = `mock-${Date.now()}`;
-    console.log('Using mock incident ID for demo:', mockId);
     this.incidentId = mockId;
     return mockId;
   }
@@ -420,7 +388,7 @@ export class CravingService {
     const isMockIncident = this.incidentId && this.incidentId.startsWith('mock-');
     
     if (isMockIncident) {
-      console.log('Using mock incident, returning simulated message response');
+      // Using mock incident, returning simulated message response
       // Return a simulated message response for mock incidents
       return {
         id: `msg-${Date.now()}`,
@@ -443,7 +411,7 @@ export class CravingService {
         created_at: message.timestamp.toISOString()
       };
       
-      console.log('Saving message to database:', messageData);
+      // Saving message to database
       
       const { data, error } = await this.supabase
         .from('client_sos_messages')
@@ -477,7 +445,7 @@ export class CravingService {
         };
       }
       
-      console.log('Message saved successfully:', data);
+      // Message saved successfully
       
       return {
         id: data.id,
@@ -795,7 +763,7 @@ export class CravingService {
     // In a real app, this would set up a server-side timer or notification
     // For demo purposes, we'll just use setTimeout
     setTimeout(() => {
-      console.log(`Follow-up after ${minutes} minutes would happen here`)
+      // Follow-up would happen here after the specified minutes
     }, minutes * 60 * 1000)
   }
 }
