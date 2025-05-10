@@ -203,13 +203,13 @@ export class CravingService {
     }
     
     try {
-      const { data, error: fetchError } = await this.supabase
+      const { data, error } = await this.supabase
         .from('clients')
         .select('*')
         .eq('id', this.clientId)
         .single();
       
-      if (fetchError) {
+      if (error) {
         return null;
       }
       
@@ -236,73 +236,61 @@ export class CravingService {
         return null;
       }
       
-      // Fetch coach data from coaches table
-      let data: Coach | null = null;
-      
-      // First check if there are any coaches in the database at all
-      const allCoachesResult = await this.supabase.from('coaches').select('*').limit(5);
-      
-      if (allCoachesResult.data && allCoachesResult.data.length > 0) {
-        // Coaches table exists and has data
-      } else {
-        // If no coaches found, try the users table instead
-        const usersResult = await this.supabase.from('users').select('*').limit(5);
-        
-        if (usersResult.data && usersResult.data.length > 0) {
-          // Try to find the coach in the users table
-          const coachInUsers = await this.supabase.from('users').select('*').eq('id', this.coachId).single();
-          
-          if (coachInUsers.data) {
-            // Convert users data to coach format
-            data = {
-              id: coachInUsers.data.id,
-              full_name: coachInUsers.data.full_name || 'Your Coach',
-              avatar_url: coachInUsers.data.avatar_url || 'https://ui-avatars.com/api/?name=Coach',
-              created_at: coachInUsers.data.created_at
-            };
-            
-            return data;
-          }
-        }
-        
-        // If all else fails, return hardcoded data
-        return {
-          id: this.coachId || 'fallback-coach-id',
-          full_name: 'Your Coach',
-          avatar_url: 'https://ui-avatars.com/api/?name=Coach',
-          created_at: new Date().toISOString()
-        };
-      }
-      // Now try to fetch the specific coach
-      const result = await this.supabase
+      // Try to fetch the specific coach from coaches table
+      const coachResult = await this.supabase
         .from('coaches')
         .select('*')
-        .eq('id', this.coachId);
+        .eq('id', this.coachId)
+        .single();
       
-      // Check if we got any data back
-      if (result.error) {
-        return null;
+      // If we found the coach in the coaches table, return it
+      if (coachResult.data && !coachResult.error) {
+        const coachData = coachResult.data;
+        
+        // Use the avatar URL directly from the database
+        // Only use a fallback if it's not provided
+        if (!coachData.avatar_url) {
+          coachData.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+        }
+        
+        return coachData as Coach;
       }
       
-      if (!result.data || result.data.length === 0) {
-        return null;
+      // If coach not found in coaches table, try the users table
+      const userResult = await this.supabase
+        .from('users')
+        .select('*')
+        .eq('id', this.coachId)
+        .single();
+      
+      if (userResult.data && !userResult.error) {
+        // Convert users data to coach format
+        return {
+          id: userResult.data.id,
+          full_name: userResult.data.full_name || 'Your Coach',
+          avatar_url: userResult.data.avatar_url || 'https://ui-avatars.com/api/?name=Coach',
+          created_at: userResult.data.created_at
+        };
       }
       
-      // Get the first coach from the result
-      const coachData = result.data[0];
-      
-      // Use the avatar URL directly from the database
-      // Only use a fallback if it's not provided
-      if (!coachData.avatar_url) {
-        coachData.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
-      }
-      
-      return coachData as Coach;
+      // If all else fails, return hardcoded data
+      return {
+        id: this.coachId || 'fallback-coach-id',
+        full_name: 'Lance Jones',
+        avatar_url: 'https://tikeyswnstrdpernoysw.supabase.co/storage/v1/object/public/avatars/9e9b790e-33f4-40f1-8bd0-804a94e6c30c/xraquml1.JPG',
+        created_at: new Date().toISOString()
+      };
     } catch {
-      return null;
+      // If any error occurs, return hardcoded data as fallback
+      return {
+        id: this.coachId || 'fallback-coach-id',
+        full_name: 'Lance Jones',
+        avatar_url: 'https://tikeyswnstrdpernoysw.supabase.co/storage/v1/object/public/avatars/9e9b790e-33f4-40f1-8bd0-804a94e6c30c/xraquml1.JPG',
+        created_at: new Date().toISOString()
+      };
     }
   }
-  
+
   // Get client information
   async getClientInfo(): Promise<Client | null> {
     if (!this.clientId) {
