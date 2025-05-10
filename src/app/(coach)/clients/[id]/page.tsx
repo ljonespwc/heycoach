@@ -10,6 +10,7 @@ import {
   BookOpenIcon,
   FireIcon
 } from '@heroicons/react/24/outline'
+import { TokenManagement } from '@/components/clients/token-management'
 
 export const generateMetadata = (): Metadata => {
   return {
@@ -184,6 +185,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               </div>
             )}
           </div>
+          
+          {/* Token Management */}
+          <TokenManagement client={client} />
           
           {client.notes && (
             <div className="bg-white rounded-lg border border-border shadow-sm p-5 mt-6">

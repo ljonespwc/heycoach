@@ -13,4 +13,5 @@ export interface Client {
   status: 'active' | 'inactive';
   notes: string | null;
   created_at: string;
+  access_token: string | null;
 }
