@@ -275,21 +275,23 @@ export default function CravingSosPage() {
         <div className="flex items-center space-x-3">
           <div className="h-12 w-12 rounded-full bg-white p-0.5 overflow-hidden">
             {coach.avatarUrl ? (
-              <Image 
-                src={coach.avatarUrl} 
-                alt={coach.name}
-                width={48}
-                height={48}
-                style={{ width: '100%', height: 'auto' }}
-                className="rounded-full"
-                onError={() => {
-                  console.error('Failed to load coach avatar:', coach.avatarUrl)
-                }}
-                unoptimized
-              />
+              <div className="relative h-full w-full">
+                <Image 
+                  src={coach.avatarUrl} 
+                  alt={coach.name}
+                  fill
+                  sizes="48px"
+                  className="rounded-full object-cover"
+                  onError={() => {
+                    console.error('Failed to load coach avatar:', coach.avatarUrl)
+                  }}
+                />
+              </div>
             ) : (
-              <div className="h-12 w-12 rounded-full bg-purple-300 flex items-center justify-center text-white text-lg font-semibold">
-                {coach.name.charAt(0)}
+              <div className="h-full w-full rounded-full bg-purple-100 flex items-center justify-center">
+                <span className="text-xl font-semibold text-purple-500">
+                  {coach.name ? coach.name.charAt(0).toUpperCase() : 'C'}
+                </span>
               </div>
             )}
           </div>
@@ -316,21 +318,21 @@ export default function CravingSosPage() {
             {message.sender === 'coach' && (
               <div className="h-8 w-8 rounded-full bg-purple-100 mr-2 overflow-hidden flex-shrink-0">
                 {coach.avatarUrl ? (
-                  <Image 
-                    src={coach.avatarUrl} 
-                    alt={coach.name}
-                    width={32}
-                    height={32}
-                    style={{ width: '100%', height: 'auto' }}
-                    className="rounded-full"
-                    onError={() => {
-                      console.error('Failed to load coach avatar in message:', coach.avatarUrl)
-                    }}
-                    unoptimized
-                  />
+                  <div className="relative h-full w-full">
+                    <Image 
+                      src={coach.avatarUrl} 
+                      alt={coach.name}
+                      fill
+                      sizes="32px"
+                      className="rounded-full object-cover"
+                      onError={() => {
+                        console.error('Failed to load coach avatar in message:', coach.avatarUrl)
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <div className="h-8 w-8 rounded-full bg-purple-300 flex items-center justify-center text-white text-sm font-semibold">
-                    {coach.name.charAt(0)}
+                  <div className="h-full w-full rounded-full bg-purple-300 flex items-center justify-center text-white text-sm font-semibold">
+                    {coach.name ? coach.name.charAt(0).toUpperCase() : 'C'}
                   </div>
                 )}
               </div>
