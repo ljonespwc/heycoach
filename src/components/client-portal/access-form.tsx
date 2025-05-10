@@ -25,11 +25,8 @@ export default function ClientAccessForm() {
         throw new Error('Invalid access token')
       }
 
-      // Store the token in localStorage
-      localStorage.setItem('client_access_token', accessToken)
-      
-      // Redirect to home page
-      router.push('/home')
+      // Redirect to the token URL flow
+      router.push(`/client-portal?token=${accessToken}`)
     } catch {
       setError('Invalid access token. Please try again.')
     } finally {
