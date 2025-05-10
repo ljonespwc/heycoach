@@ -126,3 +126,22 @@ CREATE TABLE IF NOT EXISTS movement_incidents (
     time_of_day time without time zone,
     post_energy_level integer
 );
+
+-- Table to store messages within a session
+CREATE TABLE IF NOT EXISTS client_sos_messages (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    incident_type text NOT NULL CHECK (incident_type IN ('craving', 'movement')),
+    incident_id uuid NOT NULL, -- References either craving_incidents or movement_incidents
+    sender_type text NOT NULL CHECK (sender_type IN ('system', 'coach', 'client')),
+    message_text text NOT NULL,
+    message_type text NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'option_selection', 'intensity_rating', 'location_selection', 'tactic_response', 'followup_response')),
+    metadata jsonb DEFAULT '{}'::jsonb, -- For storing structured data like selected options, ratings, etc.
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Add constraint to ensure incident_id references the correct table based on incident_type
+-- Note: PostgreSQL doesn't support foreign key references with conditions, so we'll enforce this in application logic
+
+-- Indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_client_sos_messages_incident ON client_sos_messages(incident_type, incident_id);
+CREATE INDEX IF NOT EXISTS idx_client_sos_messages_created_at ON client_sos_messages(created_at);
