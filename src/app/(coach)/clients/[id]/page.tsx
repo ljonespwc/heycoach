@@ -186,9 +186,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             )}
           </div>
           
-          {/* Token Management */}
-          <TokenManagement client={client} />
-          
           {client.notes && (
             <div className="bg-white rounded-lg border border-border shadow-sm p-5 mt-6">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
@@ -200,6 +197,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <p className="text-gray-600 whitespace-pre-wrap">{client.notes}</p>
             </div>
           )}
+          
+          {/* Token Management */}
+          <TokenManagement client={client} />
         </div>
       </div>
     </div>
