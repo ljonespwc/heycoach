@@ -412,7 +412,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
              typeof clientInterventions[intervention.id] === 'object' &&
              clientInterventions[intervention.id] !== null &&
              'times_used' in clientInterventions[intervention.id] && (
-              <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full">
+              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
                 Suggested {clientInterventions[intervention.id].times_used} times
               </span>
             )}
@@ -422,7 +422,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
              typeof clientInterventions[intervention.id] === 'object' &&
              clientInterventions[intervention.id] !== null &&
              'times_used' in clientInterventions[intervention.id] && (
-              <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full">
+              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
                 Used {Math.max(0, (clientInterventions[intervention.id].times_used as number) - 0)} times
               </span>
             )}
