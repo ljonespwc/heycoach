@@ -341,7 +341,7 @@ export default function CravingSosPage() {
               className={`max-w-[75%] rounded-lg px-4 py-2 ${
                 message.sender === 'client' 
                   ? 'bg-purple-500 text-white rounded-br-none' 
-                  : 'bg-white border border-gray-200 rounded-bl-none'
+                  : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'
               }`}
             >
               {renderMessageContent(message)}
