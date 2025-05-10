@@ -27,9 +27,7 @@ export default function ClientLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="container mx-auto max-w-md px-4 py-8">
-        {children}
-      </main>
+      <main>{children}</main>
     </div>
   )
 }
