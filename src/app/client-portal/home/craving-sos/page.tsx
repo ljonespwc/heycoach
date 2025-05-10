@@ -280,6 +280,7 @@ export default function CravingSosPage() {
                 alt={coach.name}
                 width={48}
                 height={48}
+                style={{ width: '100%', height: 'auto' }}
                 className="rounded-full"
                 onError={() => {
                   console.error('Failed to load coach avatar:', coach.avatarUrl)
@@ -320,6 +321,7 @@ export default function CravingSosPage() {
                     alt={coach.name}
                     width={32}
                     height={32}
+                    style={{ width: '100%', height: 'auto' }}
                     className="rounded-full"
                     onError={() => {
                       console.error('Failed to load coach avatar in message:', coach.avatarUrl)

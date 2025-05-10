@@ -1,18 +1,19 @@
 import React, { Suspense } from 'react'
-import { Metadata } from 'next'
+import { Metadata, Viewport } from 'next'
 
 // Metadata for PWA support
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#ffffff',
+}
+
 export const metadata: Metadata = {
   title: 'HeyCoach Client',
   description: 'Your personal coaching companion',
   manifest: '/client-manifest.json',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
-  themeColor: '#ffffff',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
