@@ -96,12 +96,11 @@ ADD CONSTRAINT coach_settings_coach_id_key UNIQUE (coach_id);
 CREATE TABLE IF NOT EXISTS craving_incidents (
     id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     client_id uuid NOT NULL REFERENCES clients(id),
-    trigger_food_id uuid REFERENCES trigger_foods(id),
+    trigger_food text,
     initial_intensity integer,
     final_intensity integer,
     location text,
     context text,
-    tactic_used text,
     resisted boolean,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     resolved_at timestamp with time zone,
