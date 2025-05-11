@@ -362,7 +362,7 @@ export default function CravingSosPage() {
               <button
                 key={index}
                 onClick={() => handleOptionSelect(option)}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm font-medium transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-sm font-medium text-gray-800 transition-colors"
                 disabled={isLoading}
               >
                 {typeof option === 'string' ? option : (option.emoji ? `${option.emoji} ${option.name || ''}` : (option.text || ''))}
