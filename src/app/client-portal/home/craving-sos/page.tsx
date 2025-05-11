@@ -215,25 +215,138 @@ export default function CravingSosPage() {
       selectedText = option.value || option.text
     }
     
-    // Set input value and send in one action to prevent flashing
-    setInputValue(selectedText)
+    setIsLoading(true)
     
-    // Use setTimeout to ensure the input value is set before sending
-    setTimeout(() => {
-      handleSendMessage()
-    }, 0)
+    try {
+      // Add client message to UI with a unique ID
+      const newClientMessage: Message = {
+        id: `client-${Date.now()}`,
+        sender: 'client',
+        text: selectedText,
+        type: 'text',
+        timestamp: new Date(),
+      }
+      
+      // Update messages state
+      setMessages(prev => [...prev, newClientMessage])
+      
+      // Save the message to the database
+      if (cravingServiceRef.current) {
+        await cravingServiceRef.current.saveMessage({
+          sender: newClientMessage.sender,
+          text: newClientMessage.text,
+          type: newClientMessage.type,
+          timestamp: newClientMessage.timestamp,
+        })
+        
+        // Process the message and get the next step
+        const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
+          selectedText, 
+          currentStep
+        )
+        
+        // Create a response with a unique ID
+        const responseWithUniqueId = {
+          ...response,
+          id: `coach-${Date.now()}`
+        };
+        
+        // Add the response after a short delay
+        setTimeout(() => {
+          // Batch state updates to minimize renders
+          setMessages(prev => [...prev, responseWithUniqueId])
+          setCurrentStep(nextStep)
+          setOptionChoices(options || [])
+          setIsLoading(false)
+          
+          // Save the response
+          cravingServiceRef.current?.saveMessage({
+            sender: responseWithUniqueId.sender,
+            text: responseWithUniqueId.text,
+            type: responseWithUniqueId.type,
+            timestamp: responseWithUniqueId.timestamp,
+            metadata: responseWithUniqueId.metadata
+          })
+          
+          // If this is the encouragement step, schedule a follow-up
+          if (nextStep === ConversationStep.ENCOURAGEMENT) {
+            cravingServiceRef.current?.scheduleFollowUp(15)
+          }
+        }, 1000)
+      }
+    } catch {
+      console.log('Error processing option selection')
+      setIsLoading(false)
+    }
   }
   
   const handleIntensitySelect = async (level: number) => {
     if (isLoading) return
     
     const levelStr = level.toString()
-    setInputValue(levelStr)
+    setIsLoading(true)
     
-    // Use setTimeout to ensure the input value is set before sending
-    setTimeout(() => {
-      handleSendMessage()
-    }, 0)
+    try {
+      // Add client message to UI with a unique ID
+      const newClientMessage: Message = {
+        id: `client-${Date.now()}`,
+        sender: 'client',
+        text: levelStr,
+        type: 'text',
+        timestamp: new Date(),
+      }
+      
+      // Update messages state
+      setMessages(prev => [...prev, newClientMessage])
+      
+      // Save the message to the database
+      if (cravingServiceRef.current) {
+        await cravingServiceRef.current.saveMessage({
+          sender: newClientMessage.sender,
+          text: newClientMessage.text,
+          type: newClientMessage.type,
+          timestamp: newClientMessage.timestamp,
+        })
+        
+        // Process the message and get the next step
+        const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
+          levelStr, 
+          currentStep
+        )
+        
+        // Create a response with a unique ID
+        const responseWithUniqueId = {
+          ...response,
+          id: `coach-${Date.now()}`
+        };
+        
+        // Add the response after a short delay
+        setTimeout(() => {
+          // Batch state updates to minimize renders
+          setMessages(prev => [...prev, responseWithUniqueId])
+          setCurrentStep(nextStep)
+          setOptionChoices(options || [])
+          setIsLoading(false)
+          
+          // Save the response
+          cravingServiceRef.current?.saveMessage({
+            sender: responseWithUniqueId.sender,
+            text: responseWithUniqueId.text,
+            type: responseWithUniqueId.type,
+            timestamp: responseWithUniqueId.timestamp,
+            metadata: responseWithUniqueId.metadata
+          })
+          
+          // If this is the encouragement step, schedule a follow-up
+          if (nextStep === ConversationStep.ENCOURAGEMENT) {
+            cravingServiceRef.current?.scheduleFollowUp(15)
+          }
+        }, 1000)
+      }
+    } catch {
+      console.log('Error processing intensity selection')
+      setIsLoading(false)
+    }
   }
 
   // Render message content based on type
