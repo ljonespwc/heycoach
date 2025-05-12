@@ -4,10 +4,9 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
-import CravingService, { 
-  Message, 
-  ConversationStep 
-} from '@/lib/client-portal/craving-service'
+import { CravingService } from '@/lib/client-portal/craving-service'
+import { Message, ConversationStep, MessageType } from '@/lib/client-portal/craving-types'
+import { getCoachResponse, CoachResponse, Option } from '@/lib/client-portal/craving-conversation'
 
 export default function CravingSosPage() {
   const router = useRouter()
@@ -15,10 +14,16 @@ export default function CravingSosPage() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState<ConversationStep>(ConversationStep.WELCOME)
-  const [optionChoices, setOptionChoices] = useState<Array<{emoji?: string; name?: string; text?: string; value?: string} | string>>([])
+  const [optionChoices, setOptionChoices] = useState<Array<Option | string>>([])
+  const [clientName, setClientName] = useState<string>('there')
+  const [clientId, setClientId] = useState<string>('')
+  const [selectedFood, setSelectedFood] = useState<string | undefined>()
+  const [chosenIntervention, setChosenIntervention] = useState<{ name: string; description: string } | undefined>()
+  const [interventions, setInterventions] = useState<{ name: string; description: string }[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const cravingServiceRef = useRef<CravingService | null>(null)
-  
+  // Track if an incident has been created
+  const [, setIncidentCreated] = useState(false)
   // Session state
   const [coach, setCoach] = useState({
     name: 'Your Coach',
@@ -26,20 +31,37 @@ export default function CravingSosPage() {
     supportType: 'Craving Support'
   })
 
+  // We'll use addMessage for all message operations
+  
+  // Add a message to both UI and database
+  const addMessage = async (message: Message) => {
+    if (!cravingServiceRef.current) return;
+    try {
+      await cravingServiceRef.current.saveMessage(message);
+      setMessages(prev => [...prev, message]);
+    } catch {
+      // If database save fails, still update UI
+      setMessages(prev => [...prev, message]);
+    }
+  };
+
   // Initialize craving service and chat
   useEffect(() => {
     let mounted = true;
     
     const initChat = async () => {
       try {
-        // Create craving service instance
+        // Create and initialize craving service instance
         if (!cravingServiceRef.current) {
           cravingServiceRef.current = new CravingService()
         }
-        
-        // Create a new craving incident
+
+        // Initialize service and wait for client ID
         if (cravingServiceRef.current && mounted) {
-          await cravingServiceRef.current.createCravingIncident()
+          const initialized = await cravingServiceRef.current.initialize()
+          if (!initialized) {
+            return
+          }
           
           // Fetch session information (both client and coach)
           const sessionInfo = await cravingServiceRef.current.getSessionInfo()
@@ -56,61 +78,47 @@ export default function CravingSosPage() {
             
             if (sessionInfo.client) {
               firstName = sessionInfo.client.full_name.split(' ')[0] || 'there';
+              setClientName(firstName);
+              setClientId(sessionInfo.client.id);
             }
+
+            // Check for existing incident first
+            const hasActiveIncident = await cravingServiceRef.current.hasActiveIncident();
             
-            // Add initial welcome message with the correct client name
-            const initialMessage: Message = {
-              id: `init-${Date.now()}`,
-              sender: 'coach',
-              text: `Hi ${firstName}, I see you're having a craving moment. Let's work through this together.`,
-              type: 'text',
-              timestamp: new Date(),
+            // Create new incident if needed
+            if (!hasActiveIncident) {
+              const incidentId = await cravingServiceRef.current.createCravingIncident();
+              if (!incidentId) {
+                return;
+              }
+              setIncidentCreated(true);
+            } else {
+              setIncidentCreated(true);
             }
+
+            // Initial welcome message
+            const welcomeRes: CoachResponse = await getCoachResponse({
+              currentStep: ConversationStep.WELCOME,
+              clientName: firstName,
+              clientId: sessionInfo.client?.id || '',
+            });
+
+            // Add welcome message to UI and save to database
+            await addMessage(welcomeRes.response);
             
-            setMessages([initialMessage])
+            // Move to food selection step
+            const foodSelectionRes: CoachResponse = await getCoachResponse({
+              currentStep: welcomeRes.nextStep,
+              clientName: firstName,
+              clientId: sessionInfo.client?.id || '',
+            });
             
-            // Save the message to the database
-            if (cravingServiceRef.current) {
-              await cravingServiceRef.current.saveMessage({
-                sender: initialMessage.sender,
-                text: initialMessage.text,
-                type: initialMessage.type,
-                timestamp: initialMessage.timestamp,
-              })
-            }
+            // Add food selection message to UI and save to database
+            await addMessage(foodSelectionRes.response);
             
-            // Get the next step
-            if (cravingServiceRef.current) {
-              const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
-                '', 
-                ConversationStep.WELCOME
-              )
-              
-              // Add the response to messages after a short delay
-              const responseWithUniqueId = {
-                ...response,
-                id: `resp-${Date.now()}`
-              };
-              
-              setTimeout(() => {
-                if (mounted) {
-                  setMessages(prev => [...prev, responseWithUniqueId])
-                  setCurrentStep(nextStep)
-                  if (options) setOptionChoices(options)
-                  
-                  // Save the message
-                  if (cravingServiceRef.current) {
-                    cravingServiceRef.current.saveMessage({
-                      sender: responseWithUniqueId.sender,
-                      text: responseWithUniqueId.text,
-                      type: responseWithUniqueId.type,
-                      timestamp: responseWithUniqueId.timestamp,
-                      metadata: responseWithUniqueId.metadata
-                    })
-                  }
-                }
-              }, 1000)
-            }
+            // Update state for food selection
+            setCurrentStep(foodSelectionRes.nextStep);
+            setOptionChoices(foodSelectionRes.options || []);
           }
         }
       } catch {
@@ -133,13 +141,11 @@ export default function CravingSosPage() {
 
   const handleSendMessage = async () => {
     if ((!inputValue.trim() && !optionChoices.length) || isLoading) return
-    
     const messageText = inputValue.trim()
     setInputValue('')
     setIsLoading(true)
-    
     try {
-      // Add client message to UI with a unique ID
+      // Add client message to UI and database
       const newClientMessage: Message = {
         id: `client-${Date.now()}`,
         sender: 'client',
@@ -147,207 +153,237 @@ export default function CravingSosPage() {
         type: 'text',
         timestamp: new Date(),
       }
+      await addMessage(newClientMessage)
       
-      // Update messages state once
-      setMessages(prev => [...prev, newClientMessage])
+      // Get coach's response
+      const coachRes: CoachResponse = await getCoachResponse({
+        currentStep,
+        clientName,
+        clientId,
+        selectedFood,
+        chosenIntervention,
+      })
       
-      // Save the message to the database
-      if (cravingServiceRef.current) {
-        await cravingServiceRef.current.saveMessage({
-          sender: newClientMessage.sender,
-          text: newClientMessage.text,
-          type: newClientMessage.type,
-          timestamp: newClientMessage.timestamp,
-        })
-        
-        // Process the message and get the next step
-        const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
-          messageText, 
-          currentStep
-        )
-        
-        // Create a response with a unique ID
-        const responseWithUniqueId = {
-          ...response,
-          id: `coach-${Date.now()}`
-        };
-        
-        // Add the response after a short delay
-        setTimeout(() => {
-          // Batch state updates to minimize renders
-          setMessages(prev => [...prev, responseWithUniqueId])
-          setCurrentStep(nextStep)
-          setOptionChoices(options || [])
-          setIsLoading(false)
-          
-          // Save the response
-          cravingServiceRef.current?.saveMessage({
-            sender: responseWithUniqueId.sender,
-            text: responseWithUniqueId.text,
-            type: responseWithUniqueId.type,
-            timestamp: responseWithUniqueId.timestamp,
-            metadata: responseWithUniqueId.metadata
-          })
-          
-          // If this is the encouragement step, schedule a follow-up
-          if (nextStep === ConversationStep.ENCOURAGEMENT) {
-            cravingServiceRef.current?.scheduleFollowUp(15)
-          }
-        }, 1000)
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setIsLoading(false)
-    }
-  }
-  
-  const handleOptionSelect = async (option: {emoji?: string; name?: string; text?: string; value?: string} | string) => {
-    if (isLoading) return
-    
-    // Handle different option types
-    let selectedText = ''
-    
-    if (typeof option === 'string') {
-      selectedText = option
-    } else if (option.name) {
-      selectedText = option.emoji ? `${option.emoji} ${option.name}` : option.name
-    } else if (option.text) {
-      selectedText = option.value || option.text
-    }
-    
-    setIsLoading(true)
-    
-    try {
-      // Add client message to UI with a unique ID
-      const newClientMessage: Message = {
-        id: `client-${Date.now()}`,
-        sender: 'client',
-        text: selectedText,
-        type: 'text',
-        timestamp: new Date(),
+      // Update state based on response
+      if (currentStep === ConversationStep.SUGGEST_TACTIC && coachRes.interventions) {
+        setInterventions(coachRes.interventions)
       }
       
-      // Update messages state
-      setMessages(prev => [...prev, newClientMessage])
-      
-      // Save the message to the database
-      if (cravingServiceRef.current) {
-        await cravingServiceRef.current.saveMessage({
-          sender: newClientMessage.sender,
-          text: newClientMessage.text,
-          type: newClientMessage.type,
-          timestamp: newClientMessage.timestamp,
-        })
+      // Add coach's response with a slight delay for natural feeling
+      setTimeout(async () => {
+        await addMessage(coachRes.response)
+        setCurrentStep(coachRes.nextStep)
+        setOptionChoices(coachRes.options || [])
+        setIsLoading(false)
         
-        // Process the message and get the next step
-        const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
-          selectedText, 
-          currentStep
-        )
-        
-        // Create a response with a unique ID
-        const responseWithUniqueId = {
-          ...response,
-          id: `coach-${Date.now()}`
-        };
-        
-        // Add the response after a short delay
-        setTimeout(() => {
-          // Batch state updates to minimize renders
-          setMessages(prev => [...prev, responseWithUniqueId])
-          setCurrentStep(nextStep)
-          setOptionChoices(options || [])
-          setIsLoading(false)
-          
-          // Save the response
-          cravingServiceRef.current?.saveMessage({
-            sender: responseWithUniqueId.sender,
-            text: responseWithUniqueId.text,
-            type: responseWithUniqueId.type,
-            timestamp: responseWithUniqueId.timestamp,
-            metadata: responseWithUniqueId.metadata
-          })
-          
-          // If this is the encouragement step, schedule a follow-up
-          if (nextStep === ConversationStep.ENCOURAGEMENT) {
-            cravingServiceRef.current?.scheduleFollowUp(15)
-          }
-        }, 1000)
-      }
+        // Schedule follow-up if needed
+        if (coachRes.nextStep === ConversationStep.ENCOURAGEMENT) {
+          // Schedule follow-up in 15 minutes
+          setTimeout(async () => {
+            const followUpRes = await getCoachResponse({
+              currentStep: ConversationStep.FOLLOWUP,
+              clientName,
+              clientId,
+              selectedFood,
+              chosenIntervention,
+            })
+            await addMessage(followUpRes.response)
+            setCurrentStep(followUpRes.nextStep)
+            setOptionChoices(followUpRes.options || [])
+          }, 15 * 60 * 1000) // 15 minutes in milliseconds
+        }
+      }, 1000)
     } catch {
-      console.log('Error processing option selection')
       setIsLoading(false)
     }
   }
-  
+
+
   const handleIntensitySelect = async (level: number) => {
-    if (isLoading) return
-    
-    const levelStr = level.toString()
-    setIsLoading(true)
-    
+    if (isLoading) return;
+    setIsLoading(true);
     try {
-      // Add client message to UI with a unique ID
-      const newClientMessage: Message = {
+      const levelStr = level.toString();
+      const clientMessage: Message = {
         id: `client-${Date.now()}`,
         sender: 'client',
         text: levelStr,
-        type: 'text',
+        type: 'intensity_rating',
         timestamp: new Date(),
-      }
+      };
       
-      // Update messages state
-      setMessages(prev => [...prev, newClientMessage])
-      
-      // Save the message to the database
+      // Add client message to UI and database
+      await addMessage(clientMessage);
+
+      // Update the incident with intensity
       if (cravingServiceRef.current) {
-        await cravingServiceRef.current.saveMessage({
-          sender: newClientMessage.sender,
-          text: newClientMessage.text,
-          type: newClientMessage.type,
-          timestamp: newClientMessage.timestamp,
-        })
-        
-        // Process the message and get the next step
-        const { response, nextStep, options } = await cravingServiceRef.current.processClientMessage(
-          levelStr, 
-          currentStep
-        )
-        
-        // Create a response with a unique ID
-        const responseWithUniqueId = {
-          ...response,
-          id: `coach-${Date.now()}`
-        };
-        
-        // Add the response after a short delay
-        setTimeout(() => {
-          // Batch state updates to minimize renders
-          setMessages(prev => [...prev, responseWithUniqueId])
-          setCurrentStep(nextStep)
-          setOptionChoices(options || [])
-          setIsLoading(false)
-          
-          // Save the response
-          cravingServiceRef.current?.saveMessage({
-            sender: responseWithUniqueId.sender,
-            text: responseWithUniqueId.text,
-            type: responseWithUniqueId.type,
-            timestamp: responseWithUniqueId.timestamp,
-            metadata: responseWithUniqueId.metadata
-          })
-          
-          // If this is the encouragement step, schedule a follow-up
-          if (nextStep === ConversationStep.ENCOURAGEMENT) {
-            cravingServiceRef.current?.scheduleFollowUp(15)
-          }
-        }, 1000)
+        await cravingServiceRef.current.updateIncident({ initialIntensity: level });
       }
+
+      // Get coach's response for location question
+      const coachRes = await getCoachResponse({
+        currentStep,
+        clientName,
+        clientId,
+        selectedFood,
+        chosenIntervention
+      });
+
+      // Add coach's response with a slight delay
+      setTimeout(async () => {
+        await addMessage(coachRes.response);
+        
+        // Update state based on coach's response
+        setCurrentStep(coachRes.nextStep);
+        setOptionChoices(coachRes.options || []);
+        if (coachRes.interventions) {
+          setInterventions(coachRes.interventions);
+        }
+        
+        setIsLoading(false);
+      }, 1000);
     } catch {
-      console.log('Error processing intensity selection')
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
+  const handleOptionSelect = async (option: string | Option) => {
+    if (isLoading) return;
+
+    const cleanValue = typeof option === 'string' ? option : option.name;
+    const displayText = typeof option === 'string' ? option : `${option.emoji || ''} ${option.name}`.trim();
+
+    setIsLoading(true);
+    try {
+      // Determine message type based on current step
+      let messageType: MessageType = 'text';
+      
+      // Log the current step and value for debugging
+      console.log(`Processing option selection for step: ${currentStep}`, cleanValue);
+      
+      // Handle the database updates based on the CURRENT step
+      // This is critical - we need to update the correct fields based on which question
+      // the user is currently answering
+      switch (currentStep) {
+        case ConversationStep.GAUGE_INTENSITY:
+          // We're at the food selection step (IDENTIFY_CRAVING), but the current step is GAUGE_INTENSITY
+          // because we've already advanced to the next step
+          messageType = 'food_selection';
+          setSelectedFood(cleanValue);
+          
+          // Update incident with trigger food
+          if (cravingServiceRef.current) {
+            console.log(`Saving trigger food: ${cleanValue}`);
+            const result = await cravingServiceRef.current.updateIncident({ 
+              triggerFood: cleanValue 
+            });
+            console.log('Trigger food update result:', result);
+          }
+          break;
+          
+        case ConversationStep.IDENTIFY_LOCATION:
+          // Answering intensity question
+          messageType = 'intensity_rating';
+          const intensity = parseInt(cleanValue, 10);
+          if (!isNaN(intensity) && cravingServiceRef.current) {
+            await cravingServiceRef.current.updateIncident({ 
+              initialIntensity: intensity 
+            });
+          }
+          break;
+          
+        case ConversationStep.IDENTIFY_TRIGGER:
+          // Answering location question
+          messageType = 'location_selection';
+          if (cravingServiceRef.current) {
+            console.log(`Saving location: ${cleanValue}`);
+            const result = await cravingServiceRef.current.updateIncident({ 
+              location: cleanValue 
+            });
+            console.log('Location update result:', result);
+          }
+          break;
+          
+        case ConversationStep.SUGGEST_TACTIC:
+          // Answering trigger question
+          if (cravingServiceRef.current) {
+            console.log(`Saving context/trigger: ${cleanValue}`);
+            const result = await cravingServiceRef.current.updateIncident({ 
+              context: cleanValue 
+            });
+            console.log('Context update result:', result);
+          }
+          break;
+          
+        case ConversationStep.ENCOURAGEMENT:
+          // Find the selected intervention
+          const intervention = interventions.find(i => i.name === cleanValue);
+          if (intervention) {
+            setChosenIntervention(intervention);
+            if (cravingServiceRef.current) {
+              await cravingServiceRef.current.updateIncident({ 
+                tacticUsed: cleanValue 
+              });
+            }
+          }
+          break;
+      }
+
+      // Create client message
+      const clientMessage: Message = {
+        id: `client-${Date.now()}`,
+        sender: 'client',
+        text: displayText,
+        type: messageType,
+        timestamp: new Date(),
+      };
+
+      // Add client message to UI and database
+      await addMessage(clientMessage);
+
+      // Get coach's response
+      const coachRes: CoachResponse = await getCoachResponse({
+        currentStep,
+        clientName,
+        clientId,
+        selectedFood,
+        chosenIntervention,
+      });
+
+      // Add coach's response with a slight delay
+      setTimeout(async () => {
+        await addMessage(coachRes.response);
+        
+        // Update state based on coach's response
+        setCurrentStep(coachRes.nextStep);
+        setOptionChoices(coachRes.options || []);
+        if (coachRes.interventions) {
+          setInterventions(coachRes.interventions);
+        }
+        
+        // Schedule follow-up if needed
+        if (coachRes.nextStep === ConversationStep.FOLLOWUP) {
+          // For demo purposes, we'll use a shorter timeout
+          setTimeout(async () => {
+            const followUpRes = await getCoachResponse({
+              currentStep: ConversationStep.FOLLOWUP,
+              clientName,
+              clientId,
+              selectedFood,
+              chosenIntervention,
+            });
+            await addMessage(followUpRes.response);
+            setCurrentStep(followUpRes.nextStep);
+            setOptionChoices(followUpRes.options || []);
+          }, 15 * 1000); // 15 seconds for demo (would be 15 minutes in production)
+        }
+        
+        setIsLoading(false);
+      }, 1000);
+    } catch {
+      setIsLoading(false);
+    }
+  };
 
   // Render message content based on type
   const renderMessageContent = (message: Message) => {
