@@ -301,6 +301,8 @@ export async function getMessages(incidentId: string): Promise<Message[]> {
 
 // Update the craving incident
 import type { CravingIncident } from './craving-types';
+
+// Update an incident by its ID
 export async function updateIncident(
   incidentId: string,
   updates: Partial<CravingIncident> & { tacticUsed?: string }
@@ -340,6 +342,43 @@ export async function updateIncident(
     return true;
   } catch (e) {
     console.error('Exception updating incident:', e);
+    return false;
+  }
+}
+
+// Update the most recent active incident for a client
+export async function updateIncidentByClientId(
+  clientId: string,
+  updates: Partial<CravingIncident> & { tacticUsed?: string }
+): Promise<boolean> {
+  console.log('Updating most recent incident for client:', clientId);
+  if (!clientId) {
+    console.error('No client ID provided for update');
+    return false;
+  }
+  
+  try {
+    // First, find the most recent active incident for this client
+    const { data, error } = await supabase
+      .from('craving_incidents')
+      .select('id')
+      .eq('client_id', clientId)
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    if (error || !data || data.length === 0) {
+      console.error('Error finding active incident for client:', error || 'No active incidents found');
+      return false;
+    }
+    
+    const incidentId = data[0].id;
+    console.log('Found active incident:', incidentId);
+    
+    // Now update this incident
+    return updateIncident(incidentId, updates);
+  } catch (e) {
+    console.error('Exception updating incident by client ID:', e);
     return false;
   }
 }

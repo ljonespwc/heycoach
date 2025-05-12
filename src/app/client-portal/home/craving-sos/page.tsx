@@ -245,6 +245,14 @@ export default function CravingSosPage() {
 
       // Add coach's response with a slight delay
       setTimeout(async () => {
+        // Check if this is the follow-up message that should mark the incident as resolved
+        if (coachRes.response.metadata?.markAsResolved && cravingServiceRef.current) {
+          console.log('Marking incident as resolved');
+          await cravingServiceRef.current.updateIncident({
+            resolvedAt: new Date()
+          });
+        }
+        
         await addMessage(coachRes.response);
         
         // Update state based on coach's response
@@ -337,11 +345,32 @@ export default function CravingSosPage() {
             if (cravingServiceRef.current) {
               // Check if this is the "Another idea" option
               if (cleanValue === "Another idea") {
-                // User wants another intervention - just log this choice
+                // User wants another intervention - set the chosenIntervention to indicate this
                 console.log('User requested another intervention option');
+                // Create a special intervention object to indicate "Another idea" was selected
+                const anotherIdeaIntervention = {
+                  id: 'another-idea',
+                  name: "Another idea",
+                  description: "User requested another intervention option"
+                };
+                setChosenIntervention(anotherIdeaIntervention);
                 // We don't need to update anything in the database here
+              } else if (cleanValue === "Yes, I'll try it") {
+                // User accepted the intervention - find the intervention and update intervention_id
+                // When user clicks "Yes, I'll try it", we should use the current interventions list
+                if (interventions.length > 0) {
+                  const selectedIntervention = interventions[0]; // First intervention in the list
+                  if (selectedIntervention && selectedIntervention.id) {
+                    console.log(`User accepted intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
+                    await cravingServiceRef.current.updateIncident({
+                      interventionId: selectedIntervention.id,
+                      tacticUsed: selectedIntervention.name
+                    });
+                  }
+                }
               } else if (intervention.id) {
-                // User accepted the intervention - update intervention_id
+                // User accepted the intervention directly - update intervention_id
+                console.log(`User accepted intervention: ${intervention.name} (${intervention.id})`);
                 await cravingServiceRef.current.updateIncident({
                   interventionId: intervention.id,
                   tacticUsed: cleanValue
@@ -367,13 +396,25 @@ export default function CravingSosPage() {
       }
       setMessages(prev => [...prev, clientMessage]);
 
+      // Special handling for "Yes, I'll try it" - we need to update the intervention_id
+      if (cleanValue === "Yes, I'll try it" && interventions.length > 0 && cravingServiceRef.current) {
+        const selectedIntervention = interventions[0]; // First intervention in the list
+        if (selectedIntervention && selectedIntervention.id) {
+          console.log(`User selected Yes, I'll try it for intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
+          await cravingServiceRef.current.updateIncident({
+            interventionId: selectedIntervention.id,
+            tacticUsed: selectedIntervention.name
+          });
+        }
+      }
+      
       // Get coach's response
       const coachRes: CoachResponse = await getCoachResponse({
         currentStep,
         clientName,
         clientId,
         selectedFood,
-        chosenIntervention,
+        chosenIntervention
       });
 
       // Add coach's response with a slight delay

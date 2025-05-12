@@ -1,6 +1,6 @@
 // Conversation flow logic for Craving SOS
 import { ConversationStep, Message, Intervention } from './craving-types';
-import { getRandomClientInterventions } from './craving-db';
+import { getRandomClientInterventions, updateIncidentByClientId } from './craving-db';
 
 export interface Option {
   emoji?: string;
@@ -207,6 +207,17 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         nextStep: ConversationStep.FOLLOWUP
       };
     case ConversationStep.FOLLOWUP:
+      // When we reach the follow-up step, mark the incident as resolved directly
+      if (clientId) {
+        try {
+          // Update the incident to set resolved_at
+          console.log('Setting resolved_at for incident');
+          await updateIncidentByClientId(clientId, { resolvedAt: new Date() });
+        } catch (error) {
+          console.error('Failed to update resolved_at:', error);
+        }
+      }
+      
       return {
         response: {
           id: `coach-${now.getTime()}`,
