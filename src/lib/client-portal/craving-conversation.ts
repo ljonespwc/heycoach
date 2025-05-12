@@ -1,5 +1,5 @@
 // Conversation flow logic for Craving SOS
-import { ConversationStep, Message } from './craving-types';
+import { ConversationStep, Message, Intervention } from './craving-types';
 import { getRandomClientInterventions } from './craving-db';
 
 export interface Option {
@@ -13,7 +13,7 @@ export type CoachResponse = {
   response: Message;
   nextStep: ConversationStep;
   options?: Array<Option | string>;
-  interventions?: { name: string; description: string }[];
+  interventions?: Intervention[];
 };
 
 // Main async function to get the coach's response for a given step
@@ -114,26 +114,93 @@ export async function getCoachResponse({
       };
     case ConversationStep.SUGGEST_TACTIC:
       // Fetch interventions for the client
-      const interventions = await getRandomClientInterventions(clientId, 3);
+      const interventions = await getRandomClientInterventions(clientId, 1); // Just get one intervention initially
+      
+      if (interventions.length === 0) {
+        // Fallback if no interventions found
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, let's try taking a few deep breaths and drinking a glass of water. Want to give it a try?`,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.ENCOURAGEMENT,
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" },
+            { name: "Another idea" }
+          ],
+          interventions: [{ id: '', name: 'Deep breathing and water', description: 'Take 3-5 deep breaths and drink a full glass of water slowly.' }]
+        };
+      }
+      
+      // We have an intervention to suggest
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying one of these strategies:\n\n${interventions.map((iv, i) => `${i + 1}. ${iv.name}`).join('\n')}\n\nWhich one would you like to try right now?`,
+          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying ${interventions[0].name}. Want to give it a try?`,
           type: 'text',
           timestamp: now,
         },
         nextStep: ConversationStep.ENCOURAGEMENT,
-        options: interventions.map(iv => iv.name),
+        options: [
+          { emoji: '👍', name: "Yes, I'll try it" },
+          { name: "Another idea" }
+        ],
         interventions
       };
     case ConversationStep.ENCOURAGEMENT:
-      // Show encouragement and include full description of the chosen intervention
+      // Check if this is a response to "Another idea"
+      const isSecondOption = chosenIntervention && chosenIntervention.name === "Another idea";
+      
+      if (isSecondOption) {
+        // Get a second intervention option
+        const secondIntervention = await getRandomClientInterventions(clientId, 1);
+        
+        if (secondIntervention.length === 0) {
+          // Fallback if no interventions found
+          return {
+            response: {
+              id: `coach-${now.getTime()}`,
+              sender: 'coach',
+              text: `Let's try a different approach. How about taking a short walk or doing some gentle stretching? This can help redirect your attention and energy. Want to give it a try?`,
+              type: 'text',
+              timestamp: now,
+            },
+            nextStep: ConversationStep.FOLLOWUP,
+            options: [
+              { emoji: '👍', name: "Yes, I'll try it" }
+            ],
+            interventions: [{ id: '', name: 'Physical activity', description: 'Take a short walk or do some gentle stretching to redirect your attention and energy.' }]
+          };
+        }
+        
+        // We have a second intervention to suggest
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: `Let's try a different approach. How about ${secondIntervention[0].name}? ${secondIntervention[0].description}`,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.FOLLOWUP,
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" }
+          ],
+          interventions: secondIntervention
+        };
+      }
+      
+      // First option was accepted - show encouragement and include full description of the chosen intervention
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Great choice! ${chosenIntervention?.name ? chosenIntervention.name + ': ' + chosenIntervention.description : ''}\nAfter your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
+          text: `Great choice! ${chosenIntervention?.name ? chosenIntervention.name + ': ' + chosenIntervention.description : ''}
+After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
           type: 'text',
           timestamp: now,
         },

@@ -100,21 +100,125 @@ export async function createCravingIncident(clientId: string | null): Promise<st
 // Save a message to the database
 import { Message, MessageSender, MessageType } from './craving-types';
 
-// Fetch 3 random interventions for a client
-export async function getRandomClientInterventions(clientId: string, count: number = 3): Promise<{ name: string; description: string }[]> {
-  if (!clientId) return [];
-  try {
-    const { data, error } = await supabase
-      .from('client_interventions')
-      .select('name, description')
-      .eq('client_id', clientId);
-    if (error || !data || data.length === 0) return [];
-    // Shuffle and pick count
-    const shuffled = data.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  } catch {
+import { Intervention } from './craving-types';
+
+// Fetch active client interventions with details from craving_interventions table
+export async function getActiveClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
+  console.log('Fetching active interventions for client:', clientId);
+  if (!clientId) {
+    console.log('No client ID provided, returning empty array');
     return [];
   }
+  
+  try {
+    // If we don't have any client interventions, use default fallback interventions
+    const fallbackInterventions: Intervention[] = [
+      {
+        id: 'fallback-1',
+        name: 'Deep breathing',
+        description: 'Take 5 deep breaths, inhaling for 4 counts and exhaling for 6 counts.'
+      },
+      {
+        id: 'fallback-2',
+        name: 'Drink water',
+        description: 'Drink a full glass of water slowly, focusing on the sensation.'
+      },
+      {
+        id: 'fallback-3',
+        name: 'Take a walk',
+        description: 'Take a short 5-minute walk to redirect your attention.'
+      }
+    ];
+    
+    // Step 1: Get active client interventions
+    console.log('Querying client_interventions table...');
+    const { data: clientInterventions, error: clientError } = await supabase
+      .from('client_interventions')
+      .select('intervention_id')
+      .eq('client_id', clientId)
+      .eq('intervention_type', 'craving')
+      .eq('active', true)
+      .limit(count);
+    
+    console.log('Client interventions query result:', { clientInterventions, clientError });
+    
+    if (clientError) {
+      console.error('Error fetching client interventions:', clientError);
+      console.log('Using fallback interventions due to error');
+      return fallbackInterventions;
+    }
+    
+    if (!clientInterventions || clientInterventions.length === 0) {
+      console.log('No client interventions found, using fallback interventions');
+      return fallbackInterventions;
+    }
+    
+    // Extract intervention IDs
+    const interventionIds = clientInterventions.map(item => item.intervention_id);
+    console.log('Extracted intervention IDs:', interventionIds);
+    
+    // Step 2: Get intervention details
+    console.log('Querying craving_interventions table...');
+    const { data: interventionDetails, error: detailsError } = await supabase
+      .from('craving_interventions')
+      .select('id, name, description')
+      .in('id', interventionIds);
+    
+    console.log('Intervention details query result:', { interventionDetails, detailsError });
+    
+    if (detailsError) {
+      console.error('Error fetching intervention details:', detailsError);
+      console.log('Using fallback interventions due to error');
+      return fallbackInterventions;
+    }
+    
+    if (!interventionDetails || interventionDetails.length === 0) {
+      console.log('No intervention details found, using fallback interventions');
+      return fallbackInterventions;
+    }
+    
+    // Map the intervention details to the expected structure
+    const result = interventionDetails.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description
+    }));
+    
+    console.log('Successfully fetched interventions:', result);
+    return result;
+  } catch (e) {
+    console.error('Exception fetching active interventions:', e);
+    console.log('Using fallback interventions due to exception');
+    return [
+      {
+        id: 'fallback-1',
+        name: 'Deep breathing',
+        description: 'Take 5 deep breaths, inhaling for 4 counts and exhaling for 6 counts.'
+      },
+      {
+        id: 'fallback-2',
+        name: 'Drink water',
+        description: 'Drink a full glass of water slowly, focusing on the sensation.'
+      }
+    ];
+  }
+}
+
+// Fetch random interventions for a client
+export async function getRandomClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
+  console.log(`Getting ${count} random interventions for client:`, clientId);
+  const interventions = await getActiveClientInterventions(clientId, 10); // Get more than we need so we can shuffle
+  
+  if (interventions.length === 0) {
+    console.log('No interventions found, returning empty array');
+    return [];
+  }
+  
+  // Shuffle and pick count
+  const shuffled = interventions.sort(() => 0.5 - Math.random());
+  const result = shuffled.slice(0, Math.min(count, shuffled.length));
+  console.log(`Returning ${result.length} random interventions:`, result);
+  return result;
 }
 
 export async function saveMessage(incidentId: string, message: Omit<Message, 'id'>): Promise<Message | null> {

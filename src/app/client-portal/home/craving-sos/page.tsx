@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
 import { CravingService } from '@/lib/client-portal/craving-service'
-import { Message, ConversationStep, MessageType } from '@/lib/client-portal/craving-types'
+import { Message, ConversationStep, MessageType, Intervention } from '@/lib/client-portal/craving-types'
 import { getCoachResponse, CoachResponse, Option } from '@/lib/client-portal/craving-conversation'
 import * as CravingDB from '@/lib/client-portal/craving-db'
 
@@ -19,8 +19,8 @@ export default function CravingSosPage() {
   const [clientName, setClientName] = useState<string>('there')
   const [clientId, setClientId] = useState<string>('')
   const [selectedFood, setSelectedFood] = useState<string | undefined>()
-  const [chosenIntervention, setChosenIntervention] = useState<{ name: string; description: string } | undefined>()
-  const [interventions, setInterventions] = useState<{ name: string; description: string }[]>([])
+  const [chosenIntervention, setChosenIntervention] = useState<Intervention | undefined>()
+  const [interventions, setInterventions] = useState<Intervention[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const cravingServiceRef = useRef<CravingService | null>(null)
   // Track if an incident has been created
@@ -335,9 +335,20 @@ export default function CravingSosPage() {
           if (intervention) {
             setChosenIntervention(intervention);
             if (cravingServiceRef.current) {
-              await cravingServiceRef.current.updateIncident({ 
-                tacticUsed: cleanValue 
-              });
+              // Check if this is the "Another idea" option
+              if (cleanValue === "Another idea") {
+                // User wants another intervention - update resisted to TRUE
+                await cravingServiceRef.current.updateIncident({
+                  resisted: true
+                });
+              } else if (intervention.id) {
+                // User accepted the intervention - update intervention_id and set resisted to FALSE
+                await cravingServiceRef.current.updateIncident({
+                  interventionId: intervention.id,
+                  resisted: false,
+                  tacticUsed: cleanValue
+                });
+              }
             }
           }
           break;

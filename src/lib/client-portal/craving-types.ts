@@ -12,6 +12,12 @@ export interface Message {
   metadata?: Record<string, unknown>;
 }
 
+export interface Intervention {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface CravingIncident {
   id: string;
   clientId: string;
