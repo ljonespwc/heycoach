@@ -27,7 +27,6 @@ export interface CravingIncident {
   location?: string;
   context?: string;
   tacticUsed?: string;
-  resisted?: boolean;
   createdAt: Date;
   resolvedAt?: Date;
   interventionId?: string;

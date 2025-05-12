@@ -122,14 +122,14 @@ export async function getCoachResponse({
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, let's try taking a few deep breaths and drinking a glass of water. Want to give it a try?`,
+            text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, let's try **"Deep breathing and water"**: Take 3-5 deep breaths and drink a full glass of water slowly. Want to give it a try?`,
             type: 'text',
             timestamp: now,
           },
           nextStep: ConversationStep.ENCOURAGEMENT,
           options: [
             { emoji: '👍', name: "Yes, I'll try it" },
-            { name: "Another idea" }
+            { emoji: '💡', name: "Another idea" }
           ],
           interventions: [{ id: '', name: 'Deep breathing and water', description: 'Take 3-5 deep breaths and drink a full glass of water slowly.' }]
         };
@@ -140,14 +140,14 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying ${interventions[0].name}. Want to give it a try?`,
+          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying **"${interventions[0].name}"**: ${interventions[0].description}. Want to give it a try?`,
           type: 'text',
           timestamp: now,
         },
         nextStep: ConversationStep.ENCOURAGEMENT,
         options: [
           { emoji: '👍', name: "Yes, I'll try it" },
-          { name: "Another idea" }
+          { emoji: '💡', name: "Another idea" }
         ],
         interventions
       };

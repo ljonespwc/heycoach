@@ -199,7 +199,6 @@ export interface Database {
           location: string | null
           context: string | null
           tactic_used: string | null
-          resisted: boolean | null
           created_at: string
           resolved_at: string | null
           intervention_id: string | null
@@ -216,7 +215,6 @@ export interface Database {
           location?: string | null
           context?: string | null
           tactic_used?: string | null
-          resisted?: boolean | null
           created_at?: string
           resolved_at?: string | null
           intervention_id?: string | null
@@ -233,7 +231,6 @@ export interface Database {
           location?: string | null
           context?: string | null
           tactic_used?: string | null
-          resisted?: boolean | null
           created_at?: string
           resolved_at?: string | null
           intervention_id?: string | null
@@ -289,6 +286,18 @@ export interface Database {
           post_energy_level?: number | null
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

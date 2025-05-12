@@ -322,7 +322,6 @@ export async function updateIncident(
     if (updates.finalIntensity) updateObj.final_intensity = updates.finalIntensity;
     if (updates.location) updateObj.location = updates.location;
     if (updates.context) updateObj.context = updates.context;
-    if (updates.resisted !== undefined) updateObj.resisted = updates.resisted;
     if (updates.resolvedAt) updateObj.resolved_at = updates.resolvedAt.toISOString();
     if (updates.interventionId) updateObj.intervention_id = updates.interventionId;
     if (updates.tacticUsed) updateObj.tactic_used = updates.tacticUsed;

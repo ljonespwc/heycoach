@@ -101,7 +101,6 @@ CREATE TABLE IF NOT EXISTS craving_incidents (
     final_intensity integer,
     location text,
     context text,
-    resisted boolean,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     resolved_at timestamp with time zone,
     intervention_id uuid REFERENCES craving_interventions(id),

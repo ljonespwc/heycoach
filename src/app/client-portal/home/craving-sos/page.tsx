@@ -337,15 +337,13 @@ export default function CravingSosPage() {
             if (cravingServiceRef.current) {
               // Check if this is the "Another idea" option
               if (cleanValue === "Another idea") {
-                // User wants another intervention - update resisted to TRUE
-                await cravingServiceRef.current.updateIncident({
-                  resisted: true
-                });
+                // User wants another intervention - just log this choice
+                console.log('User requested another intervention option');
+                // We don't need to update anything in the database here
               } else if (intervention.id) {
-                // User accepted the intervention - update intervention_id and set resisted to FALSE
+                // User accepted the intervention - update intervention_id
                 await cravingServiceRef.current.updateIncident({
                   interventionId: intervention.id,
-                  resisted: false,
                   tacticUsed: cleanValue
                 });
               }
