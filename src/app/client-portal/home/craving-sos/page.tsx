@@ -345,15 +345,22 @@ export default function CravingSosPage() {
             if (cravingServiceRef.current) {
               // Check if this is the "Another idea" option
               if (cleanValue === "Another idea") {
-                // User wants another intervention - set the chosenIntervention to indicate this
+                // User wants another intervention
                 console.log('User requested another intervention option');
-                // Create a special intervention object to indicate "Another idea" was selected
+                
+                // IMPORTANT: We need to set this DIRECTLY, not through setState
+                // This ensures it's available immediately for the next getCoachResponse call
                 const anotherIdeaIntervention = {
                   id: 'another-idea',
                   name: "Another idea",
                   description: "User requested another intervention option"
                 };
+                
+                // Set it in state for future reference
                 setChosenIntervention(anotherIdeaIntervention);
+                
+                // We need to use the anotherIdeaIntervention directly in the getCoachResponse call below
+                console.log('Will use anotherIdeaIntervention in getCoachResponse call');
                 // We don't need to update anything in the database here
               } else if (cleanValue === "Yes, I'll try it") {
                 // User accepted the intervention - find the intervention and update intervention_id
@@ -396,7 +403,25 @@ export default function CravingSosPage() {
       }
       setMessages(prev => [...prev, clientMessage]);
 
-      // Special handling for "Yes, I'll try it" - we need to update the intervention_id
+      // Special handling for different options
+      let useDirectIntervention = false;
+      let directIntervention: { id: string; name: string; description: string } | undefined = undefined;
+      
+      // Handle "Another idea" option
+      if (cleanValue === "Another idea") {
+        console.log('Direct handling of Another idea option');
+        // We'll bypass the normal flow and directly get a second intervention
+        useDirectIntervention = true;
+        
+        // Create a temporary intervention object to use in the direct call
+        directIntervention = {
+          id: 'another-idea',
+          name: "Another idea",
+          description: "User requested another intervention option"
+        };
+      }
+      
+      // Handle "Yes, I'll try it" option - update the intervention_id
       if (cleanValue === "Yes, I'll try it" && interventions.length > 0 && cravingServiceRef.current) {
         const selectedIntervention = interventions[0]; // First intervention in the list
         if (selectedIntervention && selectedIntervention.id) {
@@ -408,13 +433,13 @@ export default function CravingSosPage() {
         }
       }
       
-      // Get coach's response
+      // Get coach's response - use direct intervention if needed
       const coachRes: CoachResponse = await getCoachResponse({
         currentStep,
         clientName,
         clientId,
         selectedFood,
-        chosenIntervention
+        chosenIntervention: useDirectIntervention ? directIntervention : chosenIntervention
       });
 
       // Add coach's response with a slight delay

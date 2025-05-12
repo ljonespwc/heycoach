@@ -153,9 +153,12 @@ export async function getCoachResponse({
       };
     case ConversationStep.ENCOURAGEMENT:
       // Check if this is a response to "Another idea"
+      console.log('ENCOURAGEMENT step with chosenIntervention:', chosenIntervention);
       const isSecondOption = chosenIntervention && chosenIntervention.name === "Another idea";
+      console.log('isSecondOption:', isSecondOption);
       
       if (isSecondOption) {
+        console.log('Getting second intervention option for client:', clientId);
         // Get a second intervention option
         const secondIntervention = await getRandomClientInterventions(clientId, 1);
         

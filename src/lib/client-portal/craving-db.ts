@@ -326,7 +326,7 @@ export async function updateIncident(
     if (updates.context) updateObj.context = updates.context;
     if (updates.resolvedAt) updateObj.resolved_at = updates.resolvedAt.toISOString();
     if (updates.interventionId) updateObj.intervention_id = updates.interventionId;
-    if (updates.tacticUsed) updateObj.tactic_used = updates.tacticUsed;
+    // Note: tacticUsed is not stored in the database, it's just for logging purposes
 
     console.log('Sending update to database:', updateObj);
     const { error } = await supabase
