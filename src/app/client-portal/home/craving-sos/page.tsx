@@ -7,6 +7,7 @@ import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
 import { CravingService } from '@/lib/client-portal/craving-service'
 import { Message, ConversationStep, MessageType } from '@/lib/client-portal/craving-types'
 import { getCoachResponse, CoachResponse, Option } from '@/lib/client-portal/craving-conversation'
+import * as CravingDB from '@/lib/client-portal/craving-db'
 
 export default function CravingSosPage() {
   const router = useRouter()
@@ -82,18 +83,23 @@ export default function CravingSosPage() {
               setClientId(sessionInfo.client.id);
             }
 
-            // Check for existing incident first
-            const hasActiveIncident = await cravingServiceRef.current.hasActiveIncident();
+            // Make sure we have an incident ID before proceeding
+            // First, create the incident and ensure we have a valid ID
+            let incidentId: string | null = null;
             
-            // Create new incident if needed
-            if (!hasActiveIncident) {
-              const incidentId = await cravingServiceRef.current.createCravingIncident();
-              if (!incidentId) {
-                return;
-              }
-              setIncidentCreated(true);
-            } else {
-              setIncidentCreated(true);
+            // Always create a new incident for this session
+            // This ensures we have a fresh incident ID before saving any messages
+            incidentId = await cravingServiceRef.current.createCravingIncident();
+            if (!incidentId) {
+              console.error('Failed to create incident');
+              return;
+            }
+            setIncidentCreated(true);
+            
+            // Double-check that the incident ID is set in the service
+            if (cravingServiceRef.current.getIncidentId() !== incidentId) {
+              console.error('Incident ID mismatch');
+              return;
             }
 
             // Initial welcome message
@@ -103,8 +109,12 @@ export default function CravingSosPage() {
               clientId: sessionInfo.client?.id || '',
             });
 
-            // Add welcome message to UI and save to database
-            await addMessage(welcomeRes.response);
+            // Save welcome message directly using the incident ID we just created
+            if (cravingServiceRef.current) {
+              // Force direct save to ensure it works
+              await CravingDB.saveMessage(incidentId, welcomeRes.response);
+            }
+            setMessages(prev => [...prev, welcomeRes.response]);
             
             // Move to food selection step
             const foodSelectionRes: CoachResponse = await getCoachResponse({
@@ -113,8 +123,12 @@ export default function CravingSosPage() {
               clientId: sessionInfo.client?.id || '',
             });
             
-            // Add food selection message to UI and save to database
-            await addMessage(foodSelectionRes.response);
+            // Save food selection message directly using the incident ID
+            if (cravingServiceRef.current) {
+              // Force direct save to ensure it works
+              await CravingDB.saveMessage(incidentId, foodSelectionRes.response);
+            }
+            setMessages(prev => [...prev, foodSelectionRes.response]);
             
             // Update state for food selection
             setCurrentStep(foodSelectionRes.nextStep);
@@ -268,7 +282,7 @@ export default function CravingSosPage() {
         case ConversationStep.GAUGE_INTENSITY:
           // We're at the food selection step (IDENTIFY_CRAVING), but the current step is GAUGE_INTENSITY
           // because we've already advanced to the next step
-          messageType = 'food_selection';
+          messageType = 'option_selection';
           setSelectedFood(cleanValue);
           
           // Update incident with trigger food
@@ -338,8 +352,11 @@ export default function CravingSosPage() {
         timestamp: new Date(),
       };
 
-      // Add client message to UI and database
-      await addMessage(clientMessage);
+      // Save client message to database and add to UI
+      if (cravingServiceRef.current) {
+        await cravingServiceRef.current.saveMessage(clientMessage);
+      }
+      setMessages(prev => [...prev, clientMessage]);
 
       // Get coach's response
       const coachRes: CoachResponse = await getCoachResponse({
@@ -352,7 +369,11 @@ export default function CravingSosPage() {
 
       // Add coach's response with a slight delay
       setTimeout(async () => {
-        await addMessage(coachRes.response);
+        // Save coach response to database and add to UI
+        if (cravingServiceRef.current) {
+          await cravingServiceRef.current.saveMessage(coachRes.response);
+        }
+        setMessages(prev => [...prev, coachRes.response]);
         
         // Update state based on coach's response
         setCurrentStep(coachRes.nextStep);
@@ -372,7 +393,13 @@ export default function CravingSosPage() {
               selectedFood,
               chosenIntervention,
             });
-            await addMessage(followUpRes.response);
+            
+            // Save follow-up message to database and add to UI
+            if (cravingServiceRef.current) {
+              await cravingServiceRef.current.saveMessage(followUpRes.response);
+            }
+            setMessages(prev => [...prev, followUpRes.response]);
+            
             setCurrentStep(followUpRes.nextStep);
             setOptionChoices(followUpRes.options || []);
           }, 15 * 1000); // 15 seconds for demo (would be 15 minutes in production)

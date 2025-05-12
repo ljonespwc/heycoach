@@ -60,11 +60,23 @@ export async function createCravingIncident(clientId: string | null): Promise<st
     return `mock-${Date.now()}`;
   }
   try {
+    // Get current date/time for day_of_week and time_of_day
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0-6, where 0 is Sunday
+    
+    // Format time as HH:MM:SS for PostgreSQL time without timezone
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const timeOfDay = `${hours}:${minutes}:${seconds}`;
+    
     const { data, error } = await supabase
       .from('craving_incidents')
       .insert({
         client_id: clientId,
-        created_at: new Date().toISOString()
+        created_at: now.toISOString(),
+        day_of_week: dayOfWeek,
+        time_of_day: timeOfDay
       })
       .select()
       .single();
@@ -106,9 +118,14 @@ export async function getRandomClientInterventions(clientId: string, count: numb
 }
 
 export async function saveMessage(incidentId: string, message: Omit<Message, 'id'>): Promise<Message | null> {
-  if (!incidentId) return null;
+  console.log('Saving message to database:', { incidentId, message: message.text, type: message.type });
+  if (!incidentId) {
+    console.error('No incident ID provided for saving message');
+    return null;
+  }
   // For dev/demo fallback
   if (incidentId.startsWith('mock-')) {
+    console.log('Using mock incident ID for message');
     return {
       id: `msg-${Date.now()}`,
       ...message
@@ -124,12 +141,21 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       metadata: message.metadata || {},
       created_at: message.timestamp.toISOString()
     };
+    console.log('Inserting message data:', messageData);
     const { data, error } = await supabase
       .from('client_sos_messages')
       .insert(messageData)
       .select()
       .single();
-    if (error || !data) return null;
+    if (error) {
+      console.error('Error saving message:', error);
+      return null;
+    }
+    if (!data) {
+      console.error('No data returned from message insert');
+      return null;
+    }
+    console.log('Successfully saved message:', data.id);
     return {
       id: data.id,
       sender: data.sender_type as MessageSender,

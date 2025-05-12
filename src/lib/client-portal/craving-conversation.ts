@@ -49,7 +49,7 @@ export async function getCoachResponse({
           id: `coach-${now.getTime()}`,
           sender: 'coach',
           text: `What's calling your name? (tap or type)`,
-          type: 'food_selection',
+          type: 'option_selection',
           timestamp: now,
         },
         nextStep: ConversationStep.GAUGE_INTENSITY,
