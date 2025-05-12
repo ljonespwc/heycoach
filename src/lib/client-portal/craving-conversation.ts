@@ -152,12 +152,30 @@ export async function getCoachResponse({
         interventions
       };
     case ConversationStep.ENCOURAGEMENT:
-      // Check if this is a response to "Another idea"
+      // Check if this is a response to "Another idea" or if we're accepting a second intervention
       console.log('ENCOURAGEMENT step with chosenIntervention:', chosenIntervention);
       const isSecondOption = chosenIntervention && chosenIntervention.name === "Another idea";
-      console.log('isSecondOption:', isSecondOption);
+      // If we're accepting a second intervention (after "Another idea" was selected)
+      const isAcceptingSecondIntervention = currentStep === ConversationStep.ENCOURAGEMENT && 
+                                          chosenIntervention && 
+                                          chosenIntervention.name === "Yes, I'll try it";
+      console.log('isSecondOption:', isSecondOption, 'isAcceptingSecondIntervention:', isAcceptingSecondIntervention);
       
-      if (isSecondOption) {
+      // If we're accepting the second intervention (after clicking "Yes, I'll try it" for the second option)
+      if (isAcceptingSecondIntervention) {
+        console.log('User accepted the second intervention');
+        // Show encouragement for the second intervention
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: `Great choice! After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.FOLLOWUP
+        };
+      } else if (isSecondOption) {
         console.log('Getting second intervention option for client:', clientId);
         // Get a second intervention option
         const secondIntervention = await getRandomClientInterventions(clientId, 1);
@@ -185,11 +203,11 @@ export async function getCoachResponse({
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `Let's try a different approach. How about ${secondIntervention[0].name}? ${secondIntervention[0].description}`,
+            text: `Let's try a different approach. How about ${secondIntervention[0].name}? ${secondIntervention[0].description} Want to give it a try?`,
             type: 'text',
             timestamp: now,
           },
-          nextStep: ConversationStep.FOLLOWUP,
+          nextStep: ConversationStep.ENCOURAGEMENT, // Use ENCOURAGEMENT instead of FOLLOWUP
           options: [
             { emoji: '👍', name: "Yes, I'll try it" }
           ],
