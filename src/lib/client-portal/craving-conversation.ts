@@ -70,11 +70,7 @@ export async function getCoachResponse({
           type: 'intensity_rating',
           timestamp: now,
         },
-        nextStep: ConversationStep.IDENTIFY_LOCATION,
-        options: Array.from({length: 10}, (_, i) => ({ 
-          name: String(i + 1),
-          value: String(i + 1)
-        }))
+        nextStep: ConversationStep.IDENTIFY_LOCATION
       };
     case ConversationStep.IDENTIFY_LOCATION:
       return {
