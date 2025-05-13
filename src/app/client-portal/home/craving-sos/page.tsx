@@ -440,7 +440,8 @@ export default function CravingSosPage() {
           const acceptedIntervention = {
             id: selectedIntervention.id,
             name: selectedIntervention.name,
-            description: selectedIntervention.description
+            description: selectedIntervention.description,
+            isSecondInterventionAccepted: true // Special flag to indicate this is accepting a second intervention
           };
           
           // We'll use this acceptedIntervention directly in the getCoachResponse call below

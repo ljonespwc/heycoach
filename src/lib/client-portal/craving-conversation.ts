@@ -156,9 +156,9 @@ export async function getCoachResponse({
       console.log('ENCOURAGEMENT step with chosenIntervention:', chosenIntervention);
       const isSecondOption = chosenIntervention && chosenIntervention.name === "Another idea";
       // If we're accepting a second intervention (after "Another idea" was selected)
-      const isAcceptingSecondIntervention = currentStep === ConversationStep.ENCOURAGEMENT && 
-                                          chosenIntervention && 
-                                          chosenIntervention.name === "Yes, I'll try it";
+      // Use a more specific type to avoid the 'any' TypeScript error
+      const isAcceptingSecondIntervention = chosenIntervention && 
+                                          (chosenIntervention as { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted === true;
       console.log('isSecondOption:', isSecondOption, 'isAcceptingSecondIntervention:', isAcceptingSecondIntervention);
       
       // If we're accepting the second intervention (after clicking "Yes, I'll try it" for the second option)
