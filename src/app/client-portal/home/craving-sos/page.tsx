@@ -231,14 +231,28 @@ export default function CravingSosPage() {
 
       // Update the incident with the appropriate intensity field based on the current step
       if (cravingServiceRef.current) {
-        if (currentStep === ConversationStep.RATE_RESULT) {
-          // If we're at the RATE_RESULT step, update the result_rating
+        // Add more detailed debugging
+        console.log(`Current step when updating intensity: ${currentStep}`);
+        
+        // Find the last message to determine if we're in the rating result phase
+        const lastMessage = messages[messages.length - 1];
+        const isRatingResultPhase = lastMessage && 
+          lastMessage.sender === 'coach' && 
+          lastMessage.text.includes('How would you rate the effectiveness');
+        
+        console.log(`Is rating result phase based on last message: ${isRatingResultPhase}`);
+        
+        if (isRatingResultPhase || currentStep === ConversationStep.RATE_RESULT) {
+          // If we're at the RATE_RESULT step or the last message is asking for effectiveness rating,
+          // update the result_rating
           console.log(`Saving result rating: ${level}`);
-          await cravingServiceRef.current.updateIncident({ resultRating: level });
+          const result = await cravingServiceRef.current.updateIncident({ resultRating: level });
+          console.log('Result of updating result_rating:', result);
         } else {
           // Otherwise, update the initial_intensity (for the GAUGE_INTENSITY step)
           console.log(`Saving initial intensity: ${level}`);
-          await cravingServiceRef.current.updateIncident({ initialIntensity: level });
+          const result = await cravingServiceRef.current.updateIncident({ initialIntensity: level });
+          console.log('Result of updating initial_intensity:', result);
         }
       }
 
