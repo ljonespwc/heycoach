@@ -369,6 +369,11 @@ export default function CravingSosPage() {
                   const selectedIntervention = interventions[0]; // First intervention in the list
                   if (selectedIntervention && selectedIntervention.id) {
                     console.log(`User accepted intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
+                    
+                    // IMPORTANT: Set the chosenIntervention to the selected intervention
+                    // This ensures the ENCOURAGEMENT step knows which intervention was chosen
+                    setChosenIntervention(selectedIntervention);
+                    
                     await cravingServiceRef.current.updateIncident({
                       interventionId: selectedIntervention.id,
                       tacticUsed: selectedIntervention.name
@@ -426,6 +431,23 @@ export default function CravingSosPage() {
         const selectedIntervention = interventions[0]; // First intervention in the list
         if (selectedIntervention && selectedIntervention.id) {
           console.log(`User selected Yes, I'll try it for intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
+          
+          // IMPORTANT: Set the chosenIntervention to the selected intervention
+          // This ensures the ENCOURAGEMENT step knows which intervention was chosen
+          setChosenIntervention(selectedIntervention);
+          
+          // Create a local variable to use in the getCoachResponse call below
+          const acceptedIntervention = {
+            id: selectedIntervention.id,
+            name: selectedIntervention.name,
+            description: selectedIntervention.description
+          };
+          
+          // We'll use this acceptedIntervention directly in the getCoachResponse call below
+          // instead of trying to modify the constant chosenIntervention
+          useDirectIntervention = true;
+          directIntervention = acceptedIntervention;
+          
           await cravingServiceRef.current.updateIncident({
             interventionId: selectedIntervention.id,
             tacticUsed: selectedIntervention.name
