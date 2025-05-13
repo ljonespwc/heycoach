@@ -95,7 +95,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `What do you think triggered this craving?`,
+          text: `What do you think may have triggered this craving?`,
           type: 'option_selection',
           timestamp: now,
         },
@@ -136,7 +136,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying **"${interventions[0].name}"**: ${interventions[0].description}. Want to give it a try?`,
+          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying "${interventions[0].name}"? ${interventions[0].description}. Want to give it a try?`,
           type: 'tactic_response',
           timestamp: now,
         },
@@ -165,7 +165,7 @@ export async function getCoachResponse({
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `Great choice! After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
+            text: `After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
             type: 'text',
             timestamp: now,
           },
@@ -239,7 +239,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Hi again! How did that strategy work for you? Did the craving pass?`,
+          text: `Hi again! Did the craving pass?`,
           type: 'followup_response',
           timestamp: now,
         },
@@ -251,7 +251,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `That's great! How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
+          text: `How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
           type: 'intensity_rating',
           timestamp: now,
         },
@@ -262,7 +262,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Thanks for sharing. Next time, you might try combining strategies - like a walk followed by a cup of tea or a different healthy snack. Every craving is an opportunity to learn what works for you. I'm proud of your effort today!`,
+          text: `Thanks for sharing. Every craving is an opportunity to learn what works for you. I'm proud of your effort today!`,
           type: 'text',
           timestamp: now,
         },
@@ -273,7 +273,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Session complete. If you need more support, just start a new SOS!`,
+          text: `If you need more support, just start a new SOS!`,
           type: 'text',
           timestamp: now,
         },
