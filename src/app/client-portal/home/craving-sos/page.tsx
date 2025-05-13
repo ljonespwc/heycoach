@@ -328,6 +328,7 @@ export default function CravingSosPage() {
           
         case ConversationStep.SUGGEST_TACTIC:
           // Answering trigger question
+          messageType = 'option_selection'; // Updated to match the coach message type
           if (cravingServiceRef.current) {
             console.log(`Saving context/trigger: ${cleanValue}`);
             const result = await cravingServiceRef.current.updateIncident({ 
@@ -339,6 +340,7 @@ export default function CravingSosPage() {
           
         case ConversationStep.ENCOURAGEMENT:
           // Find the selected intervention
+          messageType = 'tactic_response'; // Updated to match the coach message type
           const intervention = interventions.find(i => i.name === cleanValue);
           if (intervention) {
             setChosenIntervention(intervention);
@@ -393,6 +395,13 @@ export default function CravingSosPage() {
           break;
       }
 
+      // Update message type for FOLLOWUP and RATE_RESULT steps
+      if (currentStep === ConversationStep.FOLLOWUP) {
+        messageType = 'followup_response';
+      } else if (currentStep === ConversationStep.RATE_RESULT) {
+        messageType = 'intensity_rating';
+      }
+      
       // Create client message
       const clientMessage: Message = {
         id: `client-${Date.now()}`,
