@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS craving_incidents (
     client_id uuid NOT NULL REFERENCES clients(id),
     trigger_food text,
     initial_intensity integer,
-    final_intensity integer,
+    result_rating integer,
     location text,
     context text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,

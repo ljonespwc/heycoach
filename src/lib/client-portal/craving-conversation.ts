@@ -251,7 +251,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `That's still progress! Each time you practice a strategy, you're building your resistance muscle. What worked well and what could you try differently next time?`,
+          text: `That's great! How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
           type: 'intensity_rating',
           timestamp: now,
         },

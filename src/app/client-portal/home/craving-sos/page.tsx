@@ -229,9 +229,17 @@ export default function CravingSosPage() {
       // Add client message to UI and database
       await addMessage(clientMessage);
 
-      // Update the incident with intensity
+      // Update the incident with the appropriate intensity field based on the current step
       if (cravingServiceRef.current) {
-        await cravingServiceRef.current.updateIncident({ initialIntensity: level });
+        if (currentStep === ConversationStep.RATE_RESULT) {
+          // If we're at the RATE_RESULT step, update the result_rating
+          console.log(`Saving result rating: ${level}`);
+          await cravingServiceRef.current.updateIncident({ resultRating: level });
+        } else {
+          // Otherwise, update the initial_intensity (for the GAUGE_INTENSITY step)
+          console.log(`Saving initial intensity: ${level}`);
+          await cravingServiceRef.current.updateIncident({ initialIntensity: level });
+        }
       }
 
       // Get coach's response for location question
@@ -335,6 +343,19 @@ export default function CravingSosPage() {
               context: cleanValue 
             });
             console.log('Context update result:', result);
+          }
+          break;
+
+        case ConversationStep.RATE_RESULT:
+          // Handle the result rating (1-10 scale)
+          messageType = 'intensity_rating';
+          const resultRating = parseInt(cleanValue, 10);
+          if (!isNaN(resultRating) && cravingServiceRef.current) {
+            console.log(`Saving result rating: ${resultRating}`);
+            const result = await cravingServiceRef.current.updateIncident({ 
+              resultRating: resultRating 
+            });
+            console.log('Result rating update result:', result);
           }
           break;
           

@@ -321,7 +321,7 @@ export async function updateIncident(
     const updateObj: Record<string, unknown> = {};
     if (updates.triggerFood) updateObj.trigger_food = updates.triggerFood;
     if (updates.initialIntensity) updateObj.initial_intensity = updates.initialIntensity;
-    if (updates.finalIntensity) updateObj.final_intensity = updates.finalIntensity;
+    if (updates.resultRating) updateObj.result_rating = updates.resultRating;
     if (updates.location) updateObj.location = updates.location;
     if (updates.context) updateObj.context = updates.context;
     if (updates.resolvedAt) updateObj.resolved_at = updates.resolvedAt.toISOString();
