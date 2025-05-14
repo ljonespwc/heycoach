@@ -34,7 +34,7 @@ export default async function LoginPage() {
     // Create a more robust redirect URL that prioritizes the production domain
     const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || 
       (process.env.NODE_ENV === 'production'
-        ? 'https://www.heycoach.health'
+        ? 'https://app.heycoach.health'
         : process.env.VERCEL_URL 
           ? `https://${process.env.VERCEL_URL}` 
           : 'http://localhost:3000')}/auth/callback`
