@@ -1,8 +1,9 @@
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
+  disable: false, // Enable PWA in development mode
   register: true,
   skipWaiting: true,
+  buildExcludes: [/middleware-manifest.json$/],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/tikeyswnstrdpernoysw\.supabase\.co\/.*$/,

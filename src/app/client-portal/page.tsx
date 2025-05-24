@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import ClientAccessForm from '@/components/client-portal/access-form'
+import InstallPrompt from '@/components/client-portal/install-prompt'
 
 export default function ClientPortalPage() {
   const searchParams = useSearchParams()
@@ -34,6 +35,7 @@ export default function ClientPortalPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <ClientAccessForm />
+      <InstallPrompt />
     </div>
   )
 }

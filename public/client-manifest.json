@@ -10,12 +10,32 @@
     {
       "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Craving SOS",
+      "short_name": "Craving",
+      "description": "Get instant support for cravings",
+      "url": "/client-portal/home/craving-sos?source=shortcut",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Energy Boost",
+      "short_name": "Energy",
+      "description": "Get energy support",
+      "url": "/client-portal/home/energy-boost?source=shortcut",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "scope": "/"
 }

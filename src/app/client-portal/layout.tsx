@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react'
 import { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 
 // Metadata for PWA support
 export const viewport: Viewport = {
@@ -19,6 +20,12 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'HeyCoach',
   },
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'mobile-web-app-capable': 'yes',
+    'application-name': 'HeyCoach',
+    'apple-mobile-web-app-title': 'HeyCoach',
+  },
 }
 
 export default function ClientLayout({
@@ -28,6 +35,10 @@ export default function ClientLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
+      
+      {/* Service worker registration */}
+      <Script src="/pwa-register.js" strategy="afterInteractive" />
+      
       <Suspense fallback={<div>Loading...</div>}>
         <main>{children}</main>
       </Suspense>

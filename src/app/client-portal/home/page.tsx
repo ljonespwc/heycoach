@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import InstallPrompt from '@/components/client-portal/install-prompt'
 
 export default function ClientDashboard() {
   const router = useRouter()
@@ -64,6 +65,8 @@ export default function ClientDashboard() {
           History
         </Link>
       </div>
+      
+      <InstallPrompt />
     </div>
   )
 }
