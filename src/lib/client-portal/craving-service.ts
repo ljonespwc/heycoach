@@ -41,18 +41,46 @@ export class CravingService {
         const validated = await this.validateToken(token);
         
         if (validated) {
+          // Also store client ID for redundant persistence
+          if (this.clientId) {
+            localStorage.setItem('clientId', this.clientId);
+          }
           return;
+        } else {
+          // If token validation failed, clear it from localStorage
+          localStorage.removeItem('clientToken');
         }
       }
       
       // Try to get token from localStorage if not in URL (for PWA)
       const storedToken = localStorage.getItem('clientToken');
       if (storedToken) {
-        console.log('Using stored token from localStorage');
         const validated = await this.validateToken(storedToken);
         
         if (validated) {
+          // Also store client ID for redundant persistence
+          if (this.clientId) {
+            localStorage.setItem('clientId', this.clientId);
+          }
           return;
+        } else {
+          // If token validation failed, clear it from localStorage
+          localStorage.removeItem('clientToken');
+        }
+      }
+      
+      // Try to use stored client ID if available
+      const storedClientId = localStorage.getItem('clientId');
+      if (storedClientId) {
+        try {
+          const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+          if (clientDetails) {
+            this.clientId = storedClientId;
+            this.coachId = clientDetails.coach_id;
+            return;
+          }
+        } catch {
+          // Silent error handling
         }
       }
       
@@ -63,10 +91,12 @@ export class CravingService {
       if (data.authenticated && data.client) {
         this.clientId = data.client.id;
         this.coachId = data.client.coach_id;
+        
+        // Store client ID for future use
+        localStorage.setItem('clientId', data.client.id);
       }
       // If no authenticated session, the user will need to log in
-    } catch (error) {
-      console.error('Error in initializeSession:', error);
+    } catch {
       // Silent error handling
     }
   }
@@ -101,32 +131,55 @@ export class CravingService {
       const token = urlParams.get('token');
       
       if (token) {
-        console.log('Using token from URL in getSessionInfo');
+        // Store token in localStorage for PWA persistence
+        localStorage.setItem('clientToken', token);
         await this.validateToken(token);
       } else {
         // Then try localStorage token (for PWA)
         const storedToken = localStorage.getItem('clientToken');
         if (storedToken) {
-          console.log('Using stored token from localStorage in getSessionInfo');
           await this.validateToken(storedToken);
-        } else {
-          // Finally try API auth
+        } 
+        
+        // If we still don't have client/coach IDs, try using stored clientId
+        if ((!this.clientId || !this.coachId) && localStorage.getItem('clientId')) {
+          const clientId = localStorage.getItem('clientId');
+          if (clientId) {
+            // Get client details from database using the stored ID
+            try {
+              const clientDetails = await CravingDB.fetchClientDetails(clientId);
+              if (clientDetails) {
+                this.clientId = clientId;
+                this.coachId = clientDetails.coach_id;
+              }
+            } catch {
+              // Silent error handling
+            }
+          }
+        }
+        
+        // Finally try API auth as last resort
+        if (!this.clientId || !this.coachId) {
           try {
-            console.log('No token found, trying API auth');
             const response = await fetch('/api/client-portal/auth');
             const data = await response.json();
             if (data.authenticated && data.client) {
               this.clientId = data.client.id;
               this.coachId = data.client.coach_id;
+              
+              // Store the client ID for future use
+              localStorage.setItem('clientId', data.client.id);
             }
-          } catch (error) {
-            console.error('Error in API auth:', error);
+          } catch {
+            // Silent error handling
           }
         }
       }
     }
+    
     const client = this.clientId ? await CravingDB.fetchClientDetails(this.clientId) : null;
     const coach = this.coachId ? await CravingDB.getCoachInfo(this.coachId) : null;
+    
     return { client, coach };
   }
 

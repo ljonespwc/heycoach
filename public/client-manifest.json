@@ -2,7 +2,7 @@
   "name": "HeyCoach Client",
   "short_name": "HeyCoach",
   "description": "Your personal coaching companion",
-  "start_url": "/client-portal/home?token=PLACEHOLDER",
+  "start_url": "/client-portal/home",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
@@ -25,14 +25,14 @@
       "name": "Craving SOS",
       "short_name": "Craving",
       "description": "Get instant support for cravings",
-      "url": "/client-portal/home/craving-sos?source=shortcut",
+      "url": "/client-portal/home/craving-sos",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "Energy Boost",
       "short_name": "Energy",
       "description": "Get energy support",
-      "url": "/client-portal/home/energy-boost?source=shortcut",
+      "url": "/client-portal/home/energy-boost",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
   ],

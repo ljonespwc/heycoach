@@ -52,18 +52,6 @@ export default function CravingSosPage() {
     
     const initChat = async () => {
       try {
-        // Get token from URL for PWA context
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        
-        // Log token presence for debugging
-        console.log('Craving SOS initializing with token in URL:', !!token);
-        
-        // If token is in URL but not in localStorage, store it
-        if (token && typeof window !== 'undefined') {
-          localStorage.setItem('clientToken', token);
-        }
-        
         // Create and initialize craving service instance
         if (!cravingServiceRef.current) {
           cravingServiceRef.current = new CravingService()
@@ -73,8 +61,13 @@ export default function CravingSosPage() {
         if (cravingServiceRef.current && mounted) {
           const initialized = await cravingServiceRef.current.initialize()
           if (!initialized) {
-            console.error('Failed to initialize craving service');
-            return
+            // Try direct fallback using stored client ID
+            const storedClientId = localStorage.getItem('clientId');
+            if (storedClientId) {
+              setClientId(storedClientId);
+            } else {
+              return; // Can't proceed without client ID
+            }
           }
           
           // Fetch session information (both client and coach)
@@ -82,18 +75,55 @@ export default function CravingSosPage() {
           let firstName = 'there';
           
           if (mounted) {
+            // Handle coach information
             if (sessionInfo.coach) {
               setCoach({
                 name: sessionInfo.coach.full_name || 'Your Coach',
                 avatarUrl: sessionInfo.coach.avatar_url || '',
                 supportType: 'Craving Support'
               })
+            } else {
+              // Try direct coach lookup if we have a client ID
+              const storedClientId = localStorage.getItem('clientId');
+              if (storedClientId) {
+                try {
+                  const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+                  if (clientDetails && clientDetails.coach_id) {
+                    const coachDetails = await CravingDB.getCoachInfo(clientDetails.coach_id);
+                    if (coachDetails) {
+                      setCoach({
+                        name: coachDetails.full_name || 'Your Coach',
+                        avatarUrl: coachDetails.avatar_url || '',
+                        supportType: 'Craving Support'
+                      });
+                    }
+                  }
+                } catch {
+                  // Silent error handling
+                }
+              }
             }
             
+            // Handle client information
             if (sessionInfo.client) {
               firstName = sessionInfo.client.full_name.split(' ')[0] || 'there';
               setClientName(firstName);
               setClientId(sessionInfo.client.id);
+            } else {
+              // Try direct client lookup
+              const storedClientId = localStorage.getItem('clientId');
+              if (storedClientId) {
+                try {
+                  const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+                  if (clientDetails) {
+                    firstName = clientDetails.full_name.split(' ')[0] || 'there';
+                    setClientName(firstName);
+                    setClientId(storedClientId);
+                  }
+                } catch {
+                  // Silent error handling
+                }
+              }
             }
 
             // Make sure we have an incident ID before proceeding

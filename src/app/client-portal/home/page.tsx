@@ -11,7 +11,10 @@ export default function ClientDashboard() {
   const token = searchParams.get('token')
   
   useEffect(() => {
-    console.log('Client dashboard loaded with token:', token)
+    // Store token in localStorage if available in URL
+    if (token) {
+      localStorage.setItem('clientToken', token);
+    }
   }, [token])
 
   return (
