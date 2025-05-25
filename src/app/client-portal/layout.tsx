@@ -39,9 +39,6 @@ export default function ClientLayout({
       {/* Service worker registration */}
       <Script src="/pwa-register.js" strategy="afterInteractive" />
       
-      {/* Update manifest with token */}
-      <Script src="/update-manifest.js" strategy="afterInteractive" />
-      
       <Suspense fallback={<div>Loading...</div>}>
         <main>{children}</main>
       </Suspense>

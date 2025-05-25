@@ -46,37 +46,17 @@ export default function CravingSosPage() {
     }
   };
 
-  // Reference to the initChat function
-  const initChatRef = useRef<(() => Promise<void>) | null>(null);
-
-  // Listen for token added to URL event (for PWA contexts)
-  useEffect(() => {
-    const handleTokenAddedToUrl = () => {
-      // If we already have a craving service initialized, skip
-      if (cravingServiceRef.current) return;
-      
-      // Force re-initialization with the new token
-      if (initChatRef.current) {
-        initChatRef.current();
-      }
-    };
-    
-    // Add event listener
-    window.addEventListener('tokenAddedToUrl', handleTokenAddedToUrl);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('tokenAddedToUrl', handleTokenAddedToUrl);
-    };
-  }, []);
+  // Keep track of initialization state
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Initialize craving service and chat
   useEffect(() => {
     let mounted = true;
     
     const initChat = async () => {
-      // Store reference to this function for the token event listener
-      initChatRef.current = initChat;
+      // Prevent multiple initializations
+      if (isInitialized) return;
+      
       try {
         // Create and initialize craving service instance
         if (!cravingServiceRef.current) {
@@ -85,6 +65,18 @@ export default function CravingSosPage() {
 
         // Initialize service and wait for client ID
         if (cravingServiceRef.current && mounted) {
+          // Get token from URL or localStorage
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlToken = urlParams.get('token');
+          const storedToken = localStorage.getItem('clientToken');
+          const token = urlToken || storedToken;
+          
+          // Store token in localStorage for future use
+          if (token) {
+            localStorage.setItem('clientToken', token);
+          }
+          
+          // Initialize with the token
           const initialized = await cravingServiceRef.current.initialize()
           if (!initialized) {
             // Try direct fallback using stored client ID
@@ -95,6 +87,9 @@ export default function CravingSosPage() {
               return; // Can't proceed without client ID
             }
           }
+          
+          // Mark as initialized
+          setIsInitialized(true);
           
           // Fetch session information (both client and coach)
           const sessionInfo = await cravingServiceRef.current.getSessionInfo()

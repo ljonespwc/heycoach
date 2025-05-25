@@ -16,6 +16,11 @@ export default function ClientDashboard() {
       localStorage.setItem('clientToken', token);
     }
   }, [token])
+  
+  // Function to get the token (either from URL or localStorage)
+  const getToken = () => {
+    return token || localStorage.getItem('clientToken') || '';
+  }
 
   return (
     <div className="space-y-8">
@@ -29,8 +34,8 @@ export default function ClientDashboard() {
       <div className="grid gap-4">
         <button
           onClick={() => {
-            console.log('Navigating to craving-sos with token:', token);
-            router.push(token ? `/client-portal/home/craving-sos?token=${token}` : '/client-portal/home/craving-sos');
+            const currentToken = getToken();
+            router.push(`/client-portal/home/craving-sos?token=${currentToken}`);
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
@@ -42,8 +47,8 @@ export default function ClientDashboard() {
 
         <button
           onClick={() => {
-            console.log('Navigating to energy-boost with token:', token);
-            router.push(token ? `/client-portal/home/energy-boost?token=${token}` : '/client-portal/home/energy-boost');
+            const currentToken = getToken();
+            router.push(`/client-portal/home/energy-boost?token=${currentToken}`);
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
