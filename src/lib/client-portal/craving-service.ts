@@ -34,8 +34,22 @@ export class CravingService {
       const token = urlParams.get('token');
       
       if (token) {
+        // Store token in localStorage for PWA persistence
+        localStorage.setItem('clientToken', token);
+        
         // Validate token directly
         const validated = await this.validateToken(token);
+        
+        if (validated) {
+          return;
+        }
+      }
+      
+      // Try to get token from localStorage if not in URL (for PWA)
+      const storedToken = localStorage.getItem('clientToken');
+      if (storedToken) {
+        console.log('Using stored token from localStorage');
+        const validated = await this.validateToken(storedToken);
         
         if (validated) {
           return;
@@ -51,7 +65,8 @@ export class CravingService {
         this.coachId = data.client.coach_id;
       }
       // If no authenticated session, the user will need to log in
-    } catch {
+    } catch (error) {
+      console.error('Error in initializeSession:', error);
       // Silent error handling
     }
   }
@@ -81,18 +96,33 @@ export class CravingService {
   // Get both client and coach information
   async getSessionInfo(): Promise<{ client: Client | null, coach: Coach | null }> {
     if (!this.clientId || !this.coachId) {
+      // First try URL token
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
-      if (token) await this.validateToken(token);
-      else {
-        try {
-          const response = await fetch('/api/client-portal/auth');
-          const data = await response.json();
-          if (data.authenticated && data.client) {
-            this.clientId = data.client.id;
-            this.coachId = data.client.coach_id;
+      
+      if (token) {
+        console.log('Using token from URL in getSessionInfo');
+        await this.validateToken(token);
+      } else {
+        // Then try localStorage token (for PWA)
+        const storedToken = localStorage.getItem('clientToken');
+        if (storedToken) {
+          console.log('Using stored token from localStorage in getSessionInfo');
+          await this.validateToken(storedToken);
+        } else {
+          // Finally try API auth
+          try {
+            console.log('No token found, trying API auth');
+            const response = await fetch('/api/client-portal/auth');
+            const data = await response.json();
+            if (data.authenticated && data.client) {
+              this.clientId = data.client.id;
+              this.coachId = data.client.coach_id;
+            }
+          } catch (error) {
+            console.error('Error in API auth:', error);
           }
-        } catch {}
+        }
       }
     }
     const client = this.clientId ? await CravingDB.fetchClientDetails(this.clientId) : null;

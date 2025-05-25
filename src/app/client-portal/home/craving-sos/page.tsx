@@ -52,6 +52,18 @@ export default function CravingSosPage() {
     
     const initChat = async () => {
       try {
+        // Get token from URL for PWA context
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        // Log token presence for debugging
+        console.log('Craving SOS initializing with token in URL:', !!token);
+        
+        // If token is in URL but not in localStorage, store it
+        if (token && typeof window !== 'undefined') {
+          localStorage.setItem('clientToken', token);
+        }
+        
         // Create and initialize craving service instance
         if (!cravingServiceRef.current) {
           cravingServiceRef.current = new CravingService()
@@ -61,6 +73,7 @@ export default function CravingSosPage() {
         if (cravingServiceRef.current && mounted) {
           const initialized = await cravingServiceRef.current.initialize()
           if (!initialized) {
+            console.error('Failed to initialize craving service');
             return
           }
           
