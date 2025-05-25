@@ -49,17 +49,6 @@ export default function CravingSosPage() {
   // Keep track of initialization state
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Debug information
-  const [debugInfo, setDebugInfo] = useState({
-    urlToken: '',
-    storedToken: '',
-    clientId: '',
-    coachId: '',
-    isPWA: false,
-    initStatus: 'Not started',
-    error: ''
-  });
-
   // Initialize craving service and chat
   useEffect(() => {
     let mounted = true;
@@ -67,9 +56,6 @@ export default function CravingSosPage() {
     const initChat = async () => {
       // Prevent multiple initializations
       if (isInitialized) return;
-      
-      // Update debug status
-      setDebugInfo(prev => ({ ...prev, initStatus: 'Starting initialization' }));
       
       try {
         // Create and initialize craving service instance
@@ -88,24 +74,8 @@ export default function CravingSosPage() {
           // iOS PWA-specific handling
           const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
           
-          // Update debug info with token information
-          setDebugInfo(prev => ({
-            ...prev,
-            urlToken: urlToken || '',
-            storedToken: storedToken || '',
-            isPWA,
-            initStatus: 'Retrieved tokens'
-          }));
-          
-          console.log('CravingSOS initialization:');
-          console.log('- PWA mode:', isPWA ? 'Yes' : 'No');
-          console.log('- URL token:', urlToken ? 'Present' : 'None');
-          console.log('- Stored token:', storedToken ? 'Present' : 'None');
-          console.log('- Using token:', token ? 'Present' : 'None');
-          
           // Always store token in localStorage for future use
           if (token) {
-            console.log('Storing token in localStorage');
             localStorage.setItem('clientToken', token);
             
             // For iOS PWA, try to update the URL with the token if it's not already there
@@ -114,48 +84,31 @@ export default function CravingSosPage() {
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.set('token', token);
                 window.history.replaceState({}, '', newUrl.toString());
-                console.log('Updated URL with token for PWA mode');
-              } catch (error) {
-                console.error('Failed to update URL with token:', error);
+              } catch {
+                // Silent error handling
               }
             }
-          } else {
-            console.error('No token available');
-            setDebugInfo(prev => ({ ...prev, error: 'No token available' }));
           }
           
           // Initialize with the token
-          setDebugInfo(prev => ({ ...prev, initStatus: 'Calling initialize()' }));
           const initialized = await cravingServiceRef.current.initialize()
-          setDebugInfo(prev => ({ ...prev, initStatus: `Initialize returned: ${initialized}` }));
           
           if (!initialized) {
             // Try direct fallback using stored client ID
             const storedClientId = localStorage.getItem('clientId');
-            setDebugInfo(prev => ({ ...prev, initStatus: `Fallback with stored clientId: ${storedClientId || 'none'}` }));
             
             if (storedClientId) {
               setClientId(storedClientId);
-              setDebugInfo(prev => ({ ...prev, clientId: storedClientId }));
             } else {
-              setDebugInfo(prev => ({ ...prev, error: 'No client ID available' }));
               return; // Can't proceed without client ID
             }
           }
           
           // Mark as initialized
           setIsInitialized(true);
-          setDebugInfo(prev => ({ ...prev, initStatus: 'Initialization complete' }));
           
           // Fetch session information (both client and coach)
-          setDebugInfo(prev => ({ ...prev, initStatus: 'Fetching session info' }));
           const sessionInfo = await cravingServiceRef.current.getSessionInfo()
-          setDebugInfo(prev => ({
-            ...prev, 
-            initStatus: 'Session info retrieved',
-            clientId: sessionInfo.client?.id || debugInfo.clientId,
-            coachId: sessionInfo.coach?.id || ''
-          }));
           
           let firstName = 'there';
           
@@ -219,14 +172,12 @@ export default function CravingSosPage() {
             // This ensures we have a fresh incident ID before saving any messages
             incidentId = await cravingServiceRef.current.createCravingIncident();
             if (!incidentId) {
-              console.error('Failed to create incident');
               return;
             }
             setIncidentCreated(true);
             
             // Double-check that the incident ID is set in the service
             if (cravingServiceRef.current.getIncidentId() !== incidentId) {
-              console.error('Incident ID mismatch');
               return;
             }
 
@@ -359,28 +310,19 @@ export default function CravingSosPage() {
 
       // Update the incident with the appropriate intensity field based on the current step
       if (cravingServiceRef.current) {
-        // Add more detailed debugging
-        console.log(`Current step when updating intensity: ${currentStep}`);
-        
         // Find the last message to determine if we're in the rating result phase
         const lastMessage = messages[messages.length - 1];
         const isRatingResultPhase = lastMessage && 
           lastMessage.sender === 'coach' && 
           lastMessage.text.includes('How would you rate the effectiveness');
         
-        console.log(`Is rating result phase based on last message: ${isRatingResultPhase}`);
-        
         if (isRatingResultPhase || currentStep === ConversationStep.RATE_RESULT) {
           // If we're at the RATE_RESULT step or the last message is asking for effectiveness rating,
           // update the result_rating
-          console.log(`Saving result rating: ${level}`);
-          const result = await cravingServiceRef.current.updateIncident({ resultRating: level });
-          console.log('Result of updating result_rating:', result);
+          await cravingServiceRef.current.updateIncident({ resultRating: level });
         } else {
           // Otherwise, update the initial_intensity (for the GAUGE_INTENSITY step)
-          console.log(`Saving initial intensity: ${level}`);
-          const result = await cravingServiceRef.current.updateIncident({ initialIntensity: level });
-          console.log('Result of updating initial_intensity:', result);
+          await cravingServiceRef.current.updateIncident({ initialIntensity: level });
         }
       }
 
@@ -397,7 +339,6 @@ export default function CravingSosPage() {
       setTimeout(async () => {
         // Check if this is the follow-up message that should mark the incident as resolved
         if (coachRes.response.metadata?.markAsResolved && cravingServiceRef.current) {
-          console.log('Marking incident as resolved');
           await cravingServiceRef.current.updateIncident({
             resolvedAt: new Date()
           });
@@ -430,9 +371,6 @@ export default function CravingSosPage() {
       // Determine message type based on current step
       let messageType: MessageType = 'text';
       
-      // Log the current step and value for debugging
-      console.log(`Processing option selection for step: ${currentStep}`, cleanValue);
-      
       // Handle the database updates based on the CURRENT step
       // This is critical - we need to update the correct fields based on which question
       // the user is currently answering
@@ -445,11 +383,9 @@ export default function CravingSosPage() {
           
           // Update incident with trigger food
           if (cravingServiceRef.current) {
-            console.log(`Saving trigger food: ${cleanValue}`);
-            const result = await cravingServiceRef.current.updateIncident({ 
+            await cravingServiceRef.current.updateIncident({ 
               triggerFood: cleanValue 
             });
-            console.log('Trigger food update result:', result);
           }
           break;
           
@@ -468,11 +404,9 @@ export default function CravingSosPage() {
           // Answering location question
           messageType = 'location_selection';
           if (cravingServiceRef.current) {
-            console.log(`Saving location: ${cleanValue}`);
-            const result = await cravingServiceRef.current.updateIncident({ 
+            await cravingServiceRef.current.updateIncident({ 
               location: cleanValue 
             });
-            console.log('Location update result:', result);
           }
           break;
           
@@ -480,11 +414,9 @@ export default function CravingSosPage() {
           // Answering trigger question
           messageType = 'option_selection'; // Updated to match the coach message type
           if (cravingServiceRef.current) {
-            console.log(`Saving context/trigger: ${cleanValue}`);
-            const result = await cravingServiceRef.current.updateIncident({ 
+            await cravingServiceRef.current.updateIncident({ 
               context: cleanValue 
             });
-            console.log('Context update result:', result);
           }
           break;
 
@@ -493,11 +425,9 @@ export default function CravingSosPage() {
           messageType = 'intensity_rating';
           const resultRating = parseInt(cleanValue, 10);
           if (!isNaN(resultRating) && cravingServiceRef.current) {
-            console.log(`Saving result rating: ${resultRating}`);
-            const result = await cravingServiceRef.current.updateIncident({ 
+            await cravingServiceRef.current.updateIncident({ 
               resultRating: resultRating 
             });
-            console.log('Result rating update result:', result);
           }
           break;
           
@@ -511,10 +441,6 @@ export default function CravingSosPage() {
               // Check if this is the "Another idea" option
               if (cleanValue === "Another idea") {
                 // User wants another intervention
-                console.log('User requested another intervention option');
-                
-                // IMPORTANT: We need to set this DIRECTLY, not through setState
-                // This ensures it's available immediately for the next getCoachResponse call
                 const anotherIdeaIntervention = {
                   id: 'another-idea',
                   name: "Another idea",
@@ -525,18 +451,29 @@ export default function CravingSosPage() {
                 setChosenIntervention(anotherIdeaIntervention);
                 
                 // We need to use the anotherIdeaIntervention directly in the getCoachResponse call below
-                console.log('Will use anotherIdeaIntervention in getCoachResponse call');
-                // We don't need to update anything in the database here
+                const coachRes: CoachResponse = await getCoachResponse({
+                  currentStep: ConversationStep.ENCOURAGEMENT,
+                  clientName,
+                  clientId,
+                  selectedFood,
+                  chosenIntervention: anotherIdeaIntervention
+                });
+                
+                // Add coach's response with a slight delay
+                setTimeout(async () => {
+                  await addMessage(coachRes.response);
+                  setCurrentStep(coachRes.nextStep);
+                  setOptionChoices(coachRes.options || []);
+                  setIsLoading(false);
+                }, 1000);
+                
+                return;
               } else if (cleanValue === "Yes, I'll try it") {
                 // User accepted the intervention - find the intervention and update intervention_id
                 // When user clicks "Yes, I'll try it", we should use the current interventions list
                 if (interventions.length > 0) {
                   const selectedIntervention = interventions[0]; // First intervention in the list
                   if (selectedIntervention && selectedIntervention.id) {
-                    console.log(`User accepted intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
-                    
-                    // IMPORTANT: Set the chosenIntervention to the selected intervention
-                    // This ensures the ENCOURAGEMENT step knows which intervention was chosen
                     setChosenIntervention(selectedIntervention);
                     
                     await cravingServiceRef.current.updateIncident({
@@ -547,7 +484,6 @@ export default function CravingSosPage() {
                 }
               } else if (intervention.id) {
                 // User accepted the intervention directly - update intervention_id
-                console.log(`User accepted intervention: ${intervention.name} (${intervention.id})`);
                 await cravingServiceRef.current.updateIncident({
                   interventionId: intervention.id,
                   tacticUsed: cleanValue
@@ -580,61 +516,13 @@ export default function CravingSosPage() {
       }
       setMessages(prev => [...prev, clientMessage]);
 
-      // Special handling for different options
-      let useDirectIntervention = false;
-      let directIntervention: { id: string; name: string; description: string } | undefined = undefined;
-      
-      // Handle "Another idea" option
-      if (cleanValue === "Another idea") {
-        console.log('Direct handling of Another idea option');
-        // We'll bypass the normal flow and directly get a second intervention
-        useDirectIntervention = true;
-        
-        // Create a temporary intervention object to use in the direct call
-        directIntervention = {
-          id: 'another-idea',
-          name: "Another idea",
-          description: "User requested another intervention option"
-        };
-      }
-      
-      // Handle "Yes, I'll try it" option - update the intervention_id
-      if (cleanValue === "Yes, I'll try it" && interventions.length > 0 && cravingServiceRef.current) {
-        const selectedIntervention = interventions[0]; // First intervention in the list
-        if (selectedIntervention && selectedIntervention.id) {
-          console.log(`User selected Yes, I'll try it for intervention: ${selectedIntervention.name} (${selectedIntervention.id})`);
-          
-          // IMPORTANT: Set the chosenIntervention to the selected intervention
-          // This ensures the ENCOURAGEMENT step knows which intervention was chosen
-          setChosenIntervention(selectedIntervention);
-          
-          // Create a local variable to use in the getCoachResponse call below
-          const acceptedIntervention = {
-            id: selectedIntervention.id,
-            name: selectedIntervention.name,
-            description: selectedIntervention.description,
-            isSecondInterventionAccepted: true // Special flag to indicate this is accepting a second intervention
-          };
-          
-          // We'll use this acceptedIntervention directly in the getCoachResponse call below
-          // instead of trying to modify the constant chosenIntervention
-          useDirectIntervention = true;
-          directIntervention = acceptedIntervention;
-          
-          await cravingServiceRef.current.updateIncident({
-            interventionId: selectedIntervention.id,
-            tacticUsed: selectedIntervention.name
-          });
-        }
-      }
-      
-      // Get coach's response - use direct intervention if needed
+      // Get coach's response
       const coachRes: CoachResponse = await getCoachResponse({
         currentStep,
         clientName,
         clientId,
         selectedFood,
-        chosenIntervention: useDirectIntervention ? directIntervention : chosenIntervention
+        chosenIntervention,
       });
 
       // Add coach's response with a slight delay
@@ -650,29 +538,6 @@ export default function CravingSosPage() {
         setOptionChoices(coachRes.options || []);
         if (coachRes.interventions) {
           setInterventions(coachRes.interventions);
-        }
-        
-        // Schedule follow-up if needed
-        if (coachRes.nextStep === ConversationStep.FOLLOWUP) {
-          // For demo purposes, we'll use a shorter timeout
-          setTimeout(async () => {
-            const followUpRes = await getCoachResponse({
-              currentStep: ConversationStep.FOLLOWUP,
-              clientName,
-              clientId,
-              selectedFood,
-              chosenIntervention,
-            });
-            
-            // Save follow-up message to database and add to UI
-            if (cravingServiceRef.current) {
-              await cravingServiceRef.current.saveMessage(followUpRes.response);
-            }
-            setMessages(prev => [...prev, followUpRes.response]);
-            
-            setCurrentStep(followUpRes.nextStep);
-            setOptionChoices(followUpRes.options || []);
-          }, 15 * 1000); // 15 seconds for demo (would be 15 minutes in production)
         }
         
         setIsLoading(false);
@@ -716,19 +581,6 @@ export default function CravingSosPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Debug Panel */}
-      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-xs m-2">
-        <h3 className="font-bold text-black mb-2 text-sm">Debug Info</h3>
-        <div className="space-y-1 text-black">
-          <p><span className="font-bold">Status:</span> {debugInfo.initStatus}</p>
-          <p><span className="font-bold">PWA Mode:</span> {debugInfo.isPWA ? 'Yes' : 'No'}</p>
-          <p><span className="font-bold">URL Token:</span> {debugInfo.urlToken ? `${debugInfo.urlToken.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-bold">Stored Token:</span> {debugInfo.storedToken ? `${debugInfo.storedToken.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-bold">Client ID:</span> {debugInfo.clientId ? `${debugInfo.clientId.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-bold">Coach ID:</span> {debugInfo.coachId ? `${debugInfo.coachId.substring(0, 8)}...` : 'None'}</p>
-          {debugInfo.error && <p className="text-red-500 font-bold"><span className="font-bold">Error:</span> {debugInfo.error}</p>}
-        </div>
-      </div>
       {/* Header with coach info */}
       <div className="bg-purple-500 text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
