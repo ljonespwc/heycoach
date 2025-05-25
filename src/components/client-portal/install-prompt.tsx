@@ -225,7 +225,7 @@ export default function InstallPrompt() {
     let message = 'To install this app:\n\n'
     
     if (isIOS) {
-      message += 'Tap the share button (📤) at the bottom of the screen and select "Add to Home Screen"'
+      message += 'Tap the share button (↑) at the bottom of the screen and select "Add to Home Screen"'
     } else if (isChrome && isDesktop) {
       message += 'Look for the install icon (➕) in the address bar or click the three dots menu and select "Install HeyCoach"'
     } else {
@@ -241,8 +241,8 @@ export default function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    setDismissed(true)
-    localStorage.setItem('pwaPromptDismissed', 'true')
+    // Only hide temporarily, don't set as permanently dismissed
+    // This way the prompt will show again next time
   }
 
   // Don't show in development mode
@@ -257,7 +257,7 @@ export default function InstallPrompt() {
             <p className="mt-1 text-sm text-gray-600">
               Tap the share icon <span className="inline-block">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </span> and then &quot;Add to Home Screen&quot; for quick access.
             </p>
@@ -293,12 +293,6 @@ export default function InstallPrompt() {
             Install Now
           </button>
         )}
-        <button
-          onClick={handleDismiss}
-          className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
-        >
-          Maybe Later
-        </button>
       </div>
     </div>
   )
