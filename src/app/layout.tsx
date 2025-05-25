@@ -16,16 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "HeyCoach - Your Personal Fitness Support System",
   description: "The one-tap lifeline that keeps fitness clients on track during cravings or motivation slumps.",
-  applicationName: 'HeyCoach',
-  appleWebApp: {
-    capable: true,
-    title: 'HeyCoach',
-    statusBarStyle: 'default',
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  manifest: '/manifest.json',
 };
 
 export const viewport = {
