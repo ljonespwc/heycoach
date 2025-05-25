@@ -48,6 +48,17 @@ export default function CravingSosPage() {
 
   // Keep track of initialization state
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Debug information
+  const [debugInfo, setDebugInfo] = useState({
+    urlToken: '',
+    storedToken: '',
+    clientId: '',
+    coachId: '',
+    isPWA: false,
+    initStatus: 'Not started',
+    error: ''
+  });
 
   // Initialize craving service and chat
   useEffect(() => {
@@ -56,6 +67,9 @@ export default function CravingSosPage() {
     const initChat = async () => {
       // Prevent multiple initializations
       if (isInitialized) return;
+      
+      // Update debug status
+      setDebugInfo(prev => ({ ...prev, initStatus: 'Starting initialization' }));
       
       try {
         // Create and initialize craving service instance
@@ -71,28 +85,55 @@ export default function CravingSosPage() {
           const storedToken = localStorage.getItem('clientToken');
           const token = urlToken || storedToken;
           
+          // Update debug info with token information
+          setDebugInfo(prev => ({
+            ...prev,
+            urlToken: urlToken || '',
+            storedToken: storedToken || '',
+            isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches,
+            initStatus: 'Retrieved tokens'
+          }));
+          
           // Store token in localStorage for future use
           if (token) {
             localStorage.setItem('clientToken', token);
+          } else {
+            setDebugInfo(prev => ({ ...prev, error: 'No token available' }));
           }
           
           // Initialize with the token
+          setDebugInfo(prev => ({ ...prev, initStatus: 'Calling initialize()' }));
           const initialized = await cravingServiceRef.current.initialize()
+          setDebugInfo(prev => ({ ...prev, initStatus: `Initialize returned: ${initialized}` }));
+          
           if (!initialized) {
             // Try direct fallback using stored client ID
             const storedClientId = localStorage.getItem('clientId');
+            setDebugInfo(prev => ({ ...prev, initStatus: `Fallback with stored clientId: ${storedClientId || 'none'}` }));
+            
             if (storedClientId) {
               setClientId(storedClientId);
+              setDebugInfo(prev => ({ ...prev, clientId: storedClientId }));
             } else {
+              setDebugInfo(prev => ({ ...prev, error: 'No client ID available' }));
               return; // Can't proceed without client ID
             }
           }
           
           // Mark as initialized
           setIsInitialized(true);
+          setDebugInfo(prev => ({ ...prev, initStatus: 'Initialization complete' }));
           
           // Fetch session information (both client and coach)
+          setDebugInfo(prev => ({ ...prev, initStatus: 'Fetching session info' }));
           const sessionInfo = await cravingServiceRef.current.getSessionInfo()
+          setDebugInfo(prev => ({
+            ...prev, 
+            initStatus: 'Session info retrieved',
+            clientId: sessionInfo.client?.id || debugInfo.clientId,
+            coachId: sessionInfo.coach?.id || ''
+          }));
+          
           let firstName = 'there';
           
           if (mounted) {
@@ -652,6 +693,19 @@ export default function CravingSosPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Debug Panel */}
+      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-xs m-2">
+        <h3 className="font-medium mb-2">Debug Info</h3>
+        <div className="space-y-1">
+          <p><span className="font-medium">Status:</span> {debugInfo.initStatus}</p>
+          <p><span className="font-medium">PWA Mode:</span> {debugInfo.isPWA ? 'Yes' : 'No'}</p>
+          <p><span className="font-medium">URL Token:</span> {debugInfo.urlToken ? `${debugInfo.urlToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Stored Token:</span> {debugInfo.storedToken ? `${debugInfo.storedToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Client ID:</span> {debugInfo.clientId ? `${debugInfo.clientId.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Coach ID:</span> {debugInfo.coachId ? `${debugInfo.coachId.substring(0, 8)}...` : 'None'}</p>
+          {debugInfo.error && <p className="text-red-500"><span className="font-medium">Error:</span> {debugInfo.error}</p>}
+        </div>
+      </div>
       {/* Header with coach info */}
       <div className="bg-purple-500 text-white p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">

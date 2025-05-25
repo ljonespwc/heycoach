@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import InstallPrompt from '@/components/client-portal/install-prompt'
@@ -17,13 +17,49 @@ export default function ClientDashboard() {
     }
   }, [token])
   
+  // State for debugging information
+  const [debugInfo, setDebugInfo] = useState({
+    urlToken: '',
+    storedToken: '',
+    clientId: '',
+    isPWA: false
+  });
+
   // Function to get the token (either from URL or localStorage)
   const getToken = () => {
     return token || localStorage.getItem('clientToken') || '';
   }
+  
+  // Update debug info
+  useEffect(() => {
+    // Check if running as PWA
+    const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
+    
+    // Get stored values
+    const storedToken = localStorage.getItem('clientToken') || '';
+    const clientId = localStorage.getItem('clientId') || '';
+    
+    setDebugInfo({
+      urlToken: token || '',
+      storedToken,
+      clientId,
+      isPWA
+    });
+  }, [token]);
 
   return (
     <div className="space-y-8">
+      {/* Debug Panel */}
+      <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-xs">
+        <h3 className="font-medium mb-2">Debug Info</h3>
+        <div className="space-y-1">
+          <p><span className="font-medium">PWA Mode:</span> {debugInfo.isPWA ? 'Yes' : 'No'}</p>
+          <p><span className="font-medium">URL Token:</span> {debugInfo.urlToken ? `${debugInfo.urlToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Stored Token:</span> {debugInfo.storedToken ? `${debugInfo.storedToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Client ID:</span> {debugInfo.clientId ? `${debugInfo.clientId.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-medium">Token Used:</span> {getToken() ? `${getToken().substring(0, 8)}...` : 'None'}</p>
+        </div>
+      </div>
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight">How can we help?</h1>
         <p className="mt-2 text-sm text-gray-600">
