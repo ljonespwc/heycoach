@@ -274,7 +274,7 @@ export default function CravingSosPage() {
     return () => {
       mounted = false;
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

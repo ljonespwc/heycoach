@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function ClientAccessForm() {
@@ -8,6 +8,15 @@ export default function ClientAccessForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // Detect if we're in PWA mode
+  const [isPWA, setIsPWA] = useState(false)
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsPWA(window.matchMedia('(display-mode: standalone)').matches)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,8 +51,19 @@ export default function ClientAccessForm() {
             Welcome to HeyCoach
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Please enter your access token to continue
+            {isPWA 
+              ? "Please enter your access token to connect to your coach"
+              : "Please enter your access token to continue"
+            }
           </p>
+          {isPWA && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                📱 <strong>PWA Mode:</strong> You&apos;ll need to enter your access token each time you install the app. 
+                Your coach can provide this token again if needed.
+              </p>
+            </div>
+          )}
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
