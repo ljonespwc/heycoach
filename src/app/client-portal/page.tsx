@@ -20,11 +20,22 @@ export default function ClientPortalPage() {
         body: JSON.stringify({ token })
       }).then(async (res) => {
         if (res.ok) {
-          console.log('Token validated successfully, redirecting to home with token');
+          console.log('Token validated successfully, storing token and redirecting');
+          // Store the token in localStorage
+          localStorage.setItem('clientToken', token);
+          
+          // Get client data
+          const data = await res.json();
+          if (data.clientId) {
+            localStorage.setItem('clientId', data.clientId);
+          }
+          
           // Token is valid, redirect to home WITH the token
           router.push(`/client-portal/home?token=${token}`)
         } else {
           console.log('Token validation failed');
+          // Clear any invalid tokens
+          localStorage.removeItem('clientToken');
         }
       }).catch(error => {
         console.error('Error validating token:', error);

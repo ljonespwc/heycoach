@@ -11,9 +11,39 @@ export default function ClientDashboard() {
   const token = searchParams.get('token')
   
   useEffect(() => {
-    // Store token in localStorage if available in URL
+    // Store token in localStorage if available and validate it
     if (token) {
-      localStorage.setItem('clientToken', token);
+      localStorage.setItem('clientToken', token)
+    } else {
+      // If no token in URL but we have one in localStorage, validate it
+      const storedToken = localStorage.getItem('clientToken');
+      if (storedToken) {
+        // Validate the stored token
+        fetch('/api/client/validate-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: storedToken })
+        }).then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            if (data.clientId) {
+              localStorage.setItem('clientId', data.clientId);
+              // Update debug info
+              setDebugInfo(prev => ({
+                ...prev,
+                storedToken,
+                clientId: data.clientId
+              }));
+            }
+          } else {
+            // Clear invalid token
+            localStorage.removeItem('clientToken');
+            localStorage.removeItem('clientId');
+          }
+        }).catch(error => {
+          console.error('Error validating stored token:', error);
+        });
+      }
     }
   }, [token])
   
@@ -62,7 +92,7 @@ export default function ClientDashboard() {
       </div>
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight">How can we help?</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-800">
           Choose an option below to get immediate support
         </p>
       </div>
@@ -76,7 +106,7 @@ export default function ClientDashboard() {
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
           <h2 className="text-lg font-medium">🆘 Craving SOS</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-800">
             Get immediate support to manage your cravings
           </p>
         </button>
@@ -89,7 +119,7 @@ export default function ClientDashboard() {
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
           <h2 className="text-lg font-medium">⚡ Energy Boost</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-800">
             Need help with low energy? We&apos;ve got you covered
           </p>
         </button>

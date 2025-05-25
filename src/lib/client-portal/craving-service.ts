@@ -29,74 +29,84 @@ export class CravingService {
   
   private async initializeSession(): Promise<void> {
     try {
+      console.log('Initializing session...');
+      
       // First, use URL token parameter if available
       const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
+      const urlToken = urlParams.get('token');
+      
+      console.log('URL token:', urlToken ? 'present' : 'not present');
+      
+      // Try localStorage token if no URL token (for PWA)
+      const storedToken = localStorage.getItem('clientToken');
+      console.log('Stored token:', storedToken ? 'present' : 'not present');
+      
+      // Use URL token first, then fallback to stored token
+      const token = urlToken || storedToken;
       
       if (token) {
-        // Store token in localStorage for PWA persistence
+        // Always store the token in localStorage
         localStorage.setItem('clientToken', token);
+        console.log('Token saved to localStorage');
         
-        // Validate token directly
+        // Validate token
+        console.log('Validating token...');
         const validated = await this.validateToken(token);
+        console.log('Token validation result:', validated ? 'valid' : 'invalid');
         
         if (validated) {
+          // Client and coach IDs are set by validateToken
+          console.log('Token validated successfully');
+          
           // Also store client ID for redundant persistence
           if (this.clientId) {
             localStorage.setItem('clientId', this.clientId);
+            console.log('Client ID saved to localStorage:', this.clientId);
+            return;
           }
-          return;
         } else {
-          // If token validation failed, clear it from localStorage
-          localStorage.removeItem('clientToken');
-        }
-      }
-      
-      // Try to get token from localStorage if not in URL (for PWA)
-      const storedToken = localStorage.getItem('clientToken');
-      if (storedToken) {
-        const validated = await this.validateToken(storedToken);
-        
-        if (validated) {
-          // Also store client ID for redundant persistence
-          if (this.clientId) {
-            localStorage.setItem('clientId', this.clientId);
-          }
-          return;
-        } else {
-          // If token validation failed, clear it from localStorage
+          // If token validation failed, clear it
+          console.log('Token validation failed, clearing token');
           localStorage.removeItem('clientToken');
         }
       }
       
       // Try to use stored client ID if available
       const storedClientId = localStorage.getItem('clientId');
+      console.log('Stored client ID:', storedClientId || 'none');
+      
       if (storedClientId) {
         try {
+          console.log('Fetching client details using stored ID');
           const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
           if (clientDetails) {
             this.clientId = storedClientId;
             this.coachId = clientDetails.coach_id;
+            console.log('Retrieved client and coach IDs from stored client ID');
             return;
           }
-        } catch {
-          // Silent error handling
+        } catch (error) {
+          console.error('Error fetching client details:', error);
         }
       }
       
-      // Otherwise check for existing session
+      // Otherwise check for existing session via API
+      console.log('Checking for authenticated session via API');
       const response = await fetch('/api/client-portal/auth');
       const data = await response.json();
       
       if (data.authenticated && data.client) {
         this.clientId = data.client.id;
         this.coachId = data.client.coach_id;
+        console.log('Retrieved client and coach IDs from API');
         
         // Store client ID for future use
         localStorage.setItem('clientId', data.client.id);
+      } else {
+        console.log('No authenticated session found');
       }
-      // If no authenticated session, the user will need to log in
-    } catch {
+    } catch (error) {
+      console.error('Error in initializeSession:', error);
       // Silent error handling
     }
   }
