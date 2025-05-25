@@ -46,11 +46,37 @@ export default function CravingSosPage() {
     }
   };
 
+  // Reference to the initChat function
+  const initChatRef = useRef<(() => Promise<void>) | null>(null);
+
+  // Listen for token added to URL event (for PWA contexts)
+  useEffect(() => {
+    const handleTokenAddedToUrl = () => {
+      // If we already have a craving service initialized, skip
+      if (cravingServiceRef.current) return;
+      
+      // Force re-initialization with the new token
+      if (initChatRef.current) {
+        initChatRef.current();
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('tokenAddedToUrl', handleTokenAddedToUrl);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('tokenAddedToUrl', handleTokenAddedToUrl);
+    };
+  }, []);
+
   // Initialize craving service and chat
   useEffect(() => {
     let mounted = true;
     
     const initChat = async () => {
+      // Store reference to this function for the token event listener
+      initChatRef.current = initChat;
       try {
         // Create and initialize craving service instance
         if (!cravingServiceRef.current) {

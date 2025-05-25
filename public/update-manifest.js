@@ -1,4 +1,4 @@
-// This script dynamically updates the PWA manifest with the user's token
+// PWA Token Handler - Ensures token is available in all PWA contexts
 (function() {
   // Function to get URL parameters
   function getUrlParam(name) {
@@ -9,40 +9,41 @@
   // Get the token from the URL
   const token = getUrlParam('token');
   
+  // Check if we're running in a PWA context
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+  
   if (token) {
     // Store the token in localStorage for future use
     localStorage.setItem('clientToken', token);
-    
-    // Update the manifest file dynamically
-    fetch('/client-manifest.json')
-      .then(response => response.text())
-      .then(text => {
-        // Replace the placeholder with the actual token
-        const updatedManifest = text.replace('token=PLACEHOLDER', `token=${token}`);
-        
-        // Create a blob and URL for the updated manifest
-        const blob = new Blob([updatedManifest], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        
-        // Update the manifest link in the document head
-        let manifestLink = document.querySelector('link[rel="manifest"]');
-        if (manifestLink) {
-          manifestLink.href = manifestURL;
-        } else {
-          manifestLink = document.createElement('link');
-          manifestLink.rel = 'manifest';
-          manifestLink.href = manifestURL;
-          document.head.appendChild(manifestLink);
-        }
-        
-        console.log('PWA manifest updated with user token');
-      })
-      .catch(err => {
-        console.error('Error updating PWA manifest:', err);
-      });
-  } else {
-    // Try to get token from localStorage if not in URL
+    console.log('Token stored in localStorage');
+  } else if (isPWA) {
+    // We're in PWA mode without a token in the URL
     const storedToken = localStorage.getItem('clientToken');
+    
+    if (storedToken) {
+      // We're in a PWA and have a stored token, but it's not in the URL
+      // Add it to the current URL without reloading
+      const currentPath = window.location.pathname;
+      
+      // Only modify URL for client portal pages
+      if (currentPath.startsWith('/client-portal/')) {
+        // Update the URL with the token without causing a page reload
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('token', storedToken);
+        window.history.replaceState({}, '', newUrl.toString());
+        console.log('Added token to URL in PWA context');
+        
+        // Dispatch a custom event that our components can listen for
+        window.dispatchEvent(new CustomEvent('tokenAddedToUrl', { 
+          detail: { token: storedToken }
+        }));
+      }
+    }
+  } else {
+    // We're in browser mode without a token
+    const storedToken = localStorage.getItem('clientToken');
+    
+    // Only redirect on the base client portal path to avoid redirect loops
     if (storedToken && window.location.pathname === '/client-portal') {
       // Redirect to home page with token
       window.location.href = `/client-portal/home?token=${storedToken}`;
