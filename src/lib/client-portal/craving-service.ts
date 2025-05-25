@@ -33,38 +33,44 @@ export class CravingService {
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       
+      // Try token from URL first
       if (token) {
-        // Store token in localStorage for PWA persistence
+        console.log('Found token in URL, validating...');
         localStorage.setItem('clientToken', token);
         
-        // Validate token directly
         const validated = await this.validateToken(token);
-        
         if (validated) {
+          console.log('Token from URL validated successfully');
           return;
         }
+        console.log('URL token validation failed, trying localStorage');
       }
       
-      // Try to get token from localStorage if not in URL (for PWA)
+      // If URL token failed or wasn't present, try localStorage
       const storedToken = localStorage.getItem('clientToken');
       if (storedToken) {
         console.log('Using stored token from localStorage');
         const validated = await this.validateToken(storedToken);
         
         if (validated) {
+          console.log('Stored token validated successfully');
           return;
         }
+        console.log('Stored token validation failed, trying API auth');
       }
       
-      // Otherwise check for existing session
+      // Last resort: check for existing session via API
+      console.log('No valid token found, trying API auth');
       const response = await fetch('/api/client-portal/auth');
       const data = await response.json();
       
       if (data.authenticated && data.client) {
+        console.log('API auth successful');
         this.clientId = data.client.id;
         this.coachId = data.client.coach_id;
+      } else {
+        console.log('No authentication method succeeded');
       }
-      // If no authenticated session, the user will need to log in
     } catch (error) {
       console.error('Error in initializeSession:', error);
       // Silent error handling

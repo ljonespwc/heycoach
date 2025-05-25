@@ -26,8 +26,15 @@ export default function ClientDashboard() {
       <div className="grid gap-4">
         <button
           onClick={() => {
-            console.log('Navigating to craving-sos with token:', token);
-            router.push(token ? `/client-portal/home/craving-sos?token=${token}` : '/client-portal/home/craving-sos');
+            // First try to get token from URL params
+            const urlToken = token;
+            // If not in URL, try localStorage as fallback
+            const storedToken = !urlToken && typeof window !== 'undefined' ? localStorage.getItem('clientToken') : null;
+            // Use whichever token is available
+            const tokenToUse = urlToken || storedToken;
+            
+            console.log('Navigating to craving-sos with token:', tokenToUse ? 'present' : 'not found');
+            router.push(tokenToUse ? `/client-portal/home/craving-sos?token=${tokenToUse}` : '/client-portal/home/craving-sos');
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
@@ -39,8 +46,15 @@ export default function ClientDashboard() {
 
         <button
           onClick={() => {
-            console.log('Navigating to energy-boost with token:', token);
-            router.push(token ? `/client-portal/home/energy-boost?token=${token}` : '/client-portal/home/energy-boost');
+            // First try to get token from URL params
+            const urlToken = token;
+            // If not in URL, try localStorage as fallback
+            const storedToken = !urlToken && typeof window !== 'undefined' ? localStorage.getItem('clientToken') : null;
+            // Use whichever token is available
+            const tokenToUse = urlToken || storedToken;
+            
+            console.log('Navigating to energy-boost with token:', tokenToUse ? 'present' : 'not found');
+            router.push(tokenToUse ? `/client-portal/home/energy-boost?token=${tokenToUse}` : '/client-portal/home/energy-boost');
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
