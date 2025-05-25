@@ -113,11 +113,27 @@ export class CravingService {
   
   async validateToken(token: string): Promise<boolean> {
     try {
+      console.log('Validating token with database...');
       const { clientId, coachId } = await CravingDB.fetchClientByToken(token);
-      this.clientId = clientId;
-      this.coachId = coachId;
-      return !!clientId;
-    } catch {
+      
+      if (clientId && coachId) {
+        console.log('Token validated successfully');
+        this.clientId = clientId;
+        this.coachId = coachId;
+        
+        // Store IDs in localStorage for iOS PWA persistence
+        localStorage.setItem('clientToken', token);
+        localStorage.setItem('clientId', clientId);
+        localStorage.setItem('coachId', coachId);
+        
+        console.log('Stored client and coach IDs in localStorage');
+        return true;
+      } else {
+        console.log('Token validation failed - no client/coach IDs returned');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error validating token:', error);
       return false;
     }
   }

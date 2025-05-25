@@ -85,19 +85,42 @@ export default function CravingSosPage() {
           const storedToken = localStorage.getItem('clientToken');
           const token = urlToken || storedToken;
           
+          // iOS PWA-specific handling
+          const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
+          
           // Update debug info with token information
           setDebugInfo(prev => ({
             ...prev,
             urlToken: urlToken || '',
             storedToken: storedToken || '',
-            isPWA: typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches,
+            isPWA,
             initStatus: 'Retrieved tokens'
           }));
           
-          // Store token in localStorage for future use
+          console.log('CravingSOS initialization:');
+          console.log('- PWA mode:', isPWA ? 'Yes' : 'No');
+          console.log('- URL token:', urlToken ? 'Present' : 'None');
+          console.log('- Stored token:', storedToken ? 'Present' : 'None');
+          console.log('- Using token:', token ? 'Present' : 'None');
+          
+          // Always store token in localStorage for future use
           if (token) {
+            console.log('Storing token in localStorage');
             localStorage.setItem('clientToken', token);
+            
+            // For iOS PWA, try to update the URL with the token if it's not already there
+            if (isPWA && !urlToken && window.history) {
+              try {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('token', token);
+                window.history.replaceState({}, '', newUrl.toString());
+                console.log('Updated URL with token for PWA mode');
+              } catch (error) {
+                console.error('Failed to update URL with token:', error);
+              }
+            }
           } else {
+            console.error('No token available');
             setDebugInfo(prev => ({ ...prev, error: 'No token available' }));
           }
           
@@ -695,15 +718,15 @@ export default function CravingSosPage() {
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Debug Panel */}
       <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 text-xs m-2">
-        <h3 className="font-medium mb-2">Debug Info</h3>
-        <div className="space-y-1">
-          <p><span className="font-medium">Status:</span> {debugInfo.initStatus}</p>
-          <p><span className="font-medium">PWA Mode:</span> {debugInfo.isPWA ? 'Yes' : 'No'}</p>
-          <p><span className="font-medium">URL Token:</span> {debugInfo.urlToken ? `${debugInfo.urlToken.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-medium">Stored Token:</span> {debugInfo.storedToken ? `${debugInfo.storedToken.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-medium">Client ID:</span> {debugInfo.clientId ? `${debugInfo.clientId.substring(0, 8)}...` : 'None'}</p>
-          <p><span className="font-medium">Coach ID:</span> {debugInfo.coachId ? `${debugInfo.coachId.substring(0, 8)}...` : 'None'}</p>
-          {debugInfo.error && <p className="text-red-500"><span className="font-medium">Error:</span> {debugInfo.error}</p>}
+        <h3 className="font-bold text-black mb-2 text-sm">Debug Info</h3>
+        <div className="space-y-1 text-black">
+          <p><span className="font-bold">Status:</span> {debugInfo.initStatus}</p>
+          <p><span className="font-bold">PWA Mode:</span> {debugInfo.isPWA ? 'Yes' : 'No'}</p>
+          <p><span className="font-bold">URL Token:</span> {debugInfo.urlToken ? `${debugInfo.urlToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-bold">Stored Token:</span> {debugInfo.storedToken ? `${debugInfo.storedToken.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-bold">Client ID:</span> {debugInfo.clientId ? `${debugInfo.clientId.substring(0, 8)}...` : 'None'}</p>
+          <p><span className="font-bold">Coach ID:</span> {debugInfo.coachId ? `${debugInfo.coachId.substring(0, 8)}...` : 'None'}</p>
+          {debugInfo.error && <p className="text-red-500 font-bold"><span className="font-bold">Error:</span> {debugInfo.error}</p>}
         </div>
       </div>
       {/* Header with coach info */}
