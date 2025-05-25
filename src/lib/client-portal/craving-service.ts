@@ -29,111 +29,68 @@ export class CravingService {
   
   private async initializeSession(): Promise<void> {
     try {
-      console.log('Initializing session...');
-      
-      // First, use URL token parameter if available
+      // Get token from URL or localStorage
       const urlParams = new URLSearchParams(window.location.search);
       const urlToken = urlParams.get('token');
-      
-      console.log('URL token:', urlToken ? 'present' : 'not present');
-      
-      // Try localStorage token if no URL token (for PWA)
       const storedToken = localStorage.getItem('clientToken');
-      console.log('Stored token:', storedToken ? 'present' : 'not present');
-      
-      // Use URL token first, then fallback to stored token
       const token = urlToken || storedToken;
       
       if (token) {
-        // Always store the token in localStorage
-        localStorage.setItem('clientToken', token);
-        console.log('Token saved to localStorage');
-        
-        // Validate token
-        console.log('Validating token...');
+        // Validate token and get client/coach IDs
         const validated = await this.validateToken(token);
-        console.log('Token validation result:', validated ? 'valid' : 'invalid');
-        
         if (validated) {
-          // Client and coach IDs are set by validateToken
-          console.log('Token validated successfully');
-          
-          // Also store client ID for redundant persistence
+          // Store for future use
+          localStorage.setItem('clientToken', token);
           if (this.clientId) {
             localStorage.setItem('clientId', this.clientId);
-            console.log('Client ID saved to localStorage:', this.clientId);
-            return;
           }
+          return;
         } else {
-          // If token validation failed, clear it
-          console.log('Token validation failed, clearing token');
+          // Clear invalid token
           localStorage.removeItem('clientToken');
         }
       }
       
-      // Try to use stored client ID if available
+      // Fallback: try stored client ID
       const storedClientId = localStorage.getItem('clientId');
-      console.log('Stored client ID:', storedClientId || 'none');
-      
       if (storedClientId) {
         try {
-          console.log('Fetching client details using stored ID');
           const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
           if (clientDetails) {
             this.clientId = storedClientId;
             this.coachId = clientDetails.coach_id;
-            console.log('Retrieved client and coach IDs from stored client ID');
             return;
           }
-        } catch (error) {
-          console.error('Error fetching client details:', error);
+        } catch {
+          // Silent fallback
         }
       }
       
-      // Otherwise check for existing session via API
-      console.log('Checking for authenticated session via API');
+      // Final fallback: check API session
       const response = await fetch('/api/client-portal/auth');
       const data = await response.json();
       
       if (data.authenticated && data.client) {
         this.clientId = data.client.id;
         this.coachId = data.client.coach_id;
-        console.log('Retrieved client and coach IDs from API');
-        
-        // Store client ID for future use
-        localStorage.setItem('clientId', data.client.id);
-      } else {
-        console.log('No authenticated session found');
       }
-    } catch (error) {
-      console.error('Error in initializeSession:', error);
+    } catch {
       // Silent error handling
     }
   }
   
   async validateToken(token: string): Promise<boolean> {
     try {
-      console.log('Validating token with database...');
       const { clientId, coachId } = await CravingDB.fetchClientByToken(token);
       
       if (clientId && coachId) {
-        console.log('Token validated successfully');
         this.clientId = clientId;
         this.coachId = coachId;
-        
-        // Store IDs in localStorage for iOS PWA persistence
-        localStorage.setItem('clientToken', token);
-        localStorage.setItem('clientId', clientId);
-        localStorage.setItem('coachId', coachId);
-        
-        console.log('Stored client and coach IDs in localStorage');
         return true;
       } else {
-        console.log('Token validation failed - no client/coach IDs returned');
         return false;
       }
-    } catch (error) {
-      console.error('Error validating token:', error);
+    } catch {
       return false;
     }
   }
