@@ -257,7 +257,8 @@ export default function InstallPrompt() {
             <p className="mt-1 text-sm text-gray-600">
               Tap the share icon <span className="inline-block">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  <path d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L11 6.414V13a1 1 0 11-2 0V6.414L7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3z" />
+                  <path d="M5 17a2 2 0 012-2h6a2 2 0 012 2v1a1 1 0 01-1 1H6a1 1 0 01-1-1v-1z" fillRule="evenodd" />
                 </svg>
               </span> and then &quot;Add to Home Screen&quot; for quick access.
             </p>

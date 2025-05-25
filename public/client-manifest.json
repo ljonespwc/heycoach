@@ -2,7 +2,7 @@
   "name": "HeyCoach Client",
   "short_name": "HeyCoach",
   "description": "Your personal coaching companion",
-  "start_url": "/client-portal",
+  "start_url": "/client-portal/home?token=PLACEHOLDER",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
