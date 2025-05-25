@@ -79,18 +79,19 @@ export default function InstallPrompt() {
 
     // Check if the app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('App is already installed')
       setDismissed(true) // Don't show prompt if already installed
     }
 
-    // Check if Chrome is showing the install prompt in the address bar
-    // This is a hack to detect if the app is installable on Chrome desktop
-    setTimeout(() => {
-      if (!isInstallable && isMacOS && isChrome) {
-        console.log('InstallPrompt component: Forcing installable state for Chrome on macOS')
-        setIsInstallable(true)
-      }
-    }, 3000)
+    // Only run the Chrome on macOS hack in production mode
+    if (process.env.NODE_ENV === 'production') {
+      // Check if Chrome is showing the install prompt in the address bar
+      // This is a hack to detect if the app is installable on Chrome desktop
+      setTimeout(() => {
+        if (!isInstallable && isMacOS && isChrome) {
+          setIsInstallable(true)
+        }
+      }, 3000)
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener)
@@ -244,7 +245,8 @@ export default function InstallPrompt() {
     localStorage.setItem('pwaPromptDismissed', 'true')
   }
 
-  if (!showPrompt) return null
+  // Don't show in development mode
+  if (!showPrompt || process.env.NODE_ENV === 'development') return null
 
   return (
     <div className="fixed bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
