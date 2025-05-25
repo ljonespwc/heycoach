@@ -91,8 +91,8 @@ export default function ClientDashboard() {
         </div>
       </div>
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight">How can we help?</h1>
-        <p className="mt-2 text-sm text-gray-800">
+        <h1 className="text-2xl font-bold tracking-tight text-black">How can we help?</h1>
+        <p className="mt-2 text-sm font-medium text-black">
           Choose an option below to get immediate support
         </p>
       </div>
@@ -105,8 +105,8 @@ export default function ClientDashboard() {
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
-          <h2 className="text-lg font-medium">🆘 Craving SOS</h2>
-          <p className="mt-2 text-sm text-gray-800">
+          <h2 className="text-lg font-bold text-black">🆘 Craving SOS</h2>
+          <p className="mt-2 text-sm font-medium text-black">
             Get immediate support to manage your cravings
           </p>
         </button>
@@ -118,8 +118,8 @@ export default function ClientDashboard() {
           }}
           className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
         >
-          <h2 className="text-lg font-medium">⚡ Energy Boost</h2>
-          <p className="mt-2 text-sm text-gray-800">
+          <h2 className="text-lg font-bold text-black">⚡ Energy Boost</h2>
+          <p className="mt-2 text-sm font-medium text-black">
             Need help with low energy? We&apos;ve got you covered
           </p>
         </button>
