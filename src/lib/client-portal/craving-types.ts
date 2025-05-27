@@ -23,7 +23,7 @@ export interface CravingIncident {
   clientId: string;
   triggerFood: string;
   initialIntensity: number;
-  resultRating?: number;
+  result_rating?: number;
   location?: string;
   context?: string;
   tacticUsed?: string;

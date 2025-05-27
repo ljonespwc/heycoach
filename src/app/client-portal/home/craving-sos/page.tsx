@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
 import { CravingService } from '@/lib/client-portal/craving-service'
-import { Message, ConversationStep, MessageType, Intervention } from '@/lib/client-portal/craving-types'
-import { getCoachResponse, CoachResponse, Option } from '@/lib/client-portal/craving-conversation'
-import * as CravingDB from '@/lib/client-portal/craving-db'
+import { Message, ConversationStep, Intervention } from '@/lib/client-portal/craving-types'
+import { Option } from '@/lib/client-portal/craving-conversation'
 
 export default function CravingSosPage() {
   const router = useRouter()
@@ -17,8 +16,6 @@ export default function CravingSosPage() {
   const [currentStep, setCurrentStep] = useState<ConversationStep>(ConversationStep.WELCOME)
   const [optionChoices, setOptionChoices] = useState<Array<Option | string>>([])
   const [clientName, setClientName] = useState<string>('there')
-  const [clientId, setClientId] = useState<string>('')
-  const [selectedFood, setSelectedFood] = useState<string | undefined>()
   const [chosenIntervention, setChosenIntervention] = useState<Intervention | undefined>()
   const [interventions, setInterventions] = useState<Intervention[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -98,7 +95,7 @@ export default function CravingSosPage() {
             const storedClientId = localStorage.getItem('clientId');
             
             if (storedClientId) {
-              setClientId(storedClientId);
+              // setClientId(storedClientId);
             } else {
               return; // Can't proceed without client ID
             }
@@ -123,11 +120,11 @@ export default function CravingSosPage() {
             } else {
               // Try direct coach lookup if we have a client ID
               const storedClientId = localStorage.getItem('clientId');
-              if (storedClientId) {
+              if (storedClientId && cravingServiceRef.current) {
                 try {
-                  const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+                  const clientDetails = await cravingServiceRef.current.fetchClientDetails(storedClientId);
                   if (clientDetails && clientDetails.coach_id) {
-                    const coachDetails = await CravingDB.getCoachInfo(clientDetails.coach_id);
+                    const coachDetails = await cravingServiceRef.current.getCoachDetails(clientDetails.coach_id);
                     if (coachDetails) {
                       setCoach({
                         name: coachDetails.full_name || 'Your Coach',
@@ -146,17 +143,17 @@ export default function CravingSosPage() {
             if (sessionInfo.client) {
               firstName = sessionInfo.client.full_name.split(' ')[0] || 'there';
               setClientName(firstName);
-              setClientId(sessionInfo.client.id);
+              // setClientId(sessionInfo.client.id);
             } else {
               // Try direct client lookup
               const storedClientId = localStorage.getItem('clientId');
-              if (storedClientId) {
+              if (storedClientId && cravingServiceRef.current) {
                 try {
-                  const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+                  const clientDetails = await cravingServiceRef.current.fetchClientDetails(storedClientId);
                   if (clientDetails) {
                     firstName = clientDetails.full_name.split(' ')[0] || 'there';
                     setClientName(firstName);
-                    setClientId(storedClientId);
+                    // setClientId(storedClientId);
                   }
                 } catch {
                   // Silent error handling
@@ -182,30 +179,20 @@ export default function CravingSosPage() {
             }
 
             // Initial welcome message
-            const welcomeRes: CoachResponse = await getCoachResponse({
-              currentStep: ConversationStep.WELCOME,
-              clientName: firstName,
-              clientId: sessionInfo.client?.id || '',
-            });
+            const welcomeRes = await cravingServiceRef.current.getWelcomeMessage(firstName);
 
             // Save welcome message directly using the incident ID we just created
             if (cravingServiceRef.current) {
-              // Force direct save to ensure it works
-              await CravingDB.saveMessage(incidentId, welcomeRes.response);
+              await cravingServiceRef.current.saveMessage(welcomeRes.response);
             }
             setMessages(prev => [...prev, welcomeRes.response]);
             
             // Move to food selection step
-            const foodSelectionRes: CoachResponse = await getCoachResponse({
-              currentStep: welcomeRes.nextStep,
-              clientName: firstName,
-              clientId: sessionInfo.client?.id || '',
-            });
+            const foodSelectionRes = await cravingServiceRef.current.getFoodSelectionMessage(firstName);
             
             // Save food selection message directly using the incident ID
             if (cravingServiceRef.current) {
-              // Force direct save to ensure it works
-              await CravingDB.saveMessage(incidentId, foodSelectionRes.response);
+              await cravingServiceRef.current.saveMessage(foodSelectionRes.response);
             }
             setMessages(prev => [...prev, foodSelectionRes.response]);
             
@@ -237,124 +224,62 @@ export default function CravingSosPage() {
     const messageText = inputValue.trim()
     setInputValue('')
     setIsLoading(true)
+    
     try {
-      // Add client message to UI and database
-      const newClientMessage: Message = {
-        id: `client-${Date.now()}`,
-        sender: 'client',
-        text: messageText,
-        type: 'text',
-        timestamp: new Date(),
+      if (!cravingServiceRef.current) {
+        setIsLoading(false)
+        return
       }
-      await addMessage(newClientMessage)
       
-      // Get coach's response
-      const coachRes: CoachResponse = await getCoachResponse({
+      await cravingServiceRef.current.processUserInput({
+        input: messageText,
         currentStep,
         clientName,
-        clientId,
-        selectedFood,
+        // selectedFood,
         chosenIntervention,
-      })
-      
-      // Update state based on response
-      if (currentStep === ConversationStep.SUGGEST_TACTIC && coachRes.interventions) {
-        setInterventions(coachRes.interventions)
-      }
-      
-      // Add coach's response with a slight delay for natural feeling
-      setTimeout(async () => {
-        await addMessage(coachRes.response)
-        setCurrentStep(coachRes.nextStep)
-        setOptionChoices(coachRes.options || [])
-        setIsLoading(false)
-        
-        // Schedule follow-up if needed
-        if (coachRes.nextStep === ConversationStep.FOLLOWUP && chosenIntervention) {
-          // Schedule follow-up in 30 seconds for testing
-          setTimeout(async () => {
-            const followUpRes = await getCoachResponse({
-              currentStep: ConversationStep.FOLLOWUP,
-              clientName,
-              clientId,
-              selectedFood,
-              chosenIntervention,
-            })
-            await addMessage(followUpRes.response)
-            setCurrentStep(followUpRes.nextStep)
-            setOptionChoices(followUpRes.options || [])
-          }, 30 * 1000) // 30 seconds for testing (was 15 minutes)
+        interventions,
+        isOption: false,
+        onMessage: addMessage,
+        onStateUpdate: ({ currentStep: newStep, optionChoices: newOptions, interventions: newInterventions, chosenIntervention: newChosen }) => {
+          setCurrentStep(newStep)
+          setOptionChoices(newOptions)
+          if (newInterventions) setInterventions(newInterventions)
+          if (newChosen !== undefined) setChosenIntervention(newChosen || undefined)
+          setIsLoading(false)
         }
-      }, 1000)
+      })
     } catch {
       setIsLoading(false)
     }
   }
 
-
   const handleIntensitySelect = async (level: number) => {
     if (isLoading) return;
     setIsLoading(true);
+    
     try {
-      const levelStr = level.toString();
-      const clientMessage: Message = {
-        id: `client-${Date.now()}`,
-        sender: 'client',
-        text: levelStr,
-        type: 'intensity_rating',
-        timestamp: new Date(),
-      };
-      
-      // Add client message to UI and database
-      await addMessage(clientMessage);
-
-      // Update the incident with the appropriate intensity field based on the current step
-      if (cravingServiceRef.current) {
-        // Find the last message to determine if we're in the rating result phase
-        const lastMessage = messages[messages.length - 1];
-        const isRatingResultPhase = lastMessage && 
-          lastMessage.sender === 'coach' && 
-          lastMessage.text.includes('How would you rate the effectiveness');
-        
-        if (isRatingResultPhase || currentStep === ConversationStep.RATE_RESULT) {
-          // If we're at the RATE_RESULT step or the last message is asking for effectiveness rating,
-          // update the result_rating
-          await cravingServiceRef.current.updateIncident({ resultRating: level });
-        } else {
-          // Otherwise, update the initial_intensity (for the GAUGE_INTENSITY step)
-          await cravingServiceRef.current.updateIncident({ initialIntensity: level });
-        }
+      if (!cravingServiceRef.current) {
+        setIsLoading(false)
+        return
       }
-
-      // Get coach's response for location question
-      const coachRes = await getCoachResponse({
+      
+      await cravingServiceRef.current.processUserInput({
+        input: level.toString(),
         currentStep,
         clientName,
-        clientId,
-        selectedFood,
-        chosenIntervention
-      });
-
-      // Add coach's response with a slight delay
-      setTimeout(async () => {
-        // Check if this is the follow-up message that should mark the incident as resolved
-        if (coachRes.response.metadata?.markAsResolved && cravingServiceRef.current) {
-          await cravingServiceRef.current.updateIncident({
-            resolvedAt: new Date()
-          });
+        // selectedFood,
+        chosenIntervention,
+        interventions,
+        isOption: true,
+        onMessage: addMessage,
+        onStateUpdate: ({ currentStep: newStep, optionChoices: newOptions, interventions: newInterventions, chosenIntervention: newChosen }) => {
+          setCurrentStep(newStep)
+          setOptionChoices(newOptions)
+          if (newInterventions) setInterventions(newInterventions)
+          if (newChosen !== undefined) setChosenIntervention(newChosen || undefined)
+          setIsLoading(false)
         }
-        
-        await addMessage(coachRes.response);
-        
-        // Update state based on coach's response
-        setCurrentStep(coachRes.nextStep);
-        setOptionChoices(coachRes.options || []);
-        if (coachRes.interventions) {
-          setInterventions(coachRes.interventions);
-        }
-        
-        setIsLoading(false);
-      }, 1000);
+      })
     } catch {
       setIsLoading(false);
     }
@@ -364,237 +289,31 @@ export default function CravingSosPage() {
     if (isLoading) return;
 
     const cleanValue = typeof option === 'string' ? option : option.name;
-    const displayText = typeof option === 'string' ? option : `${option.emoji || ''} ${option.name}`.trim();
-
     setIsLoading(true);
+    
     try {
-      // Determine message type based on current step
-      let messageType: MessageType = 'text';
-      let currentChosenIntervention = chosenIntervention; // Track the intervention for this call
-      
-      // Handle the database updates based on the CURRENT step
-      // This is critical - we need to update the correct fields based on which question
-      // the user is currently answering
-      switch (currentStep) {
-        case ConversationStep.GAUGE_INTENSITY:
-          // We're at the food selection step (IDENTIFY_CRAVING), but the current step is GAUGE_INTENSITY
-          // because we've already advanced to the next step
-          messageType = 'option_selection';
-          setSelectedFood(cleanValue);
-          
-          // Update incident with trigger food
-          if (cravingServiceRef.current) {
-            await cravingServiceRef.current.updateIncident({ 
-              triggerFood: cleanValue 
-            });
-          }
-          break;
-          
-        case ConversationStep.IDENTIFY_LOCATION:
-          // Answering intensity question
-          messageType = 'intensity_rating';
-          const intensity = parseInt(cleanValue, 10);
-          if (!isNaN(intensity) && cravingServiceRef.current) {
-            await cravingServiceRef.current.updateIncident({ 
-              initialIntensity: intensity 
-            });
-          }
-          break;
-          
-        case ConversationStep.IDENTIFY_TRIGGER:
-          // Answering location question
-          messageType = 'location_selection';
-          if (cravingServiceRef.current) {
-            await cravingServiceRef.current.updateIncident({ 
-              location: cleanValue 
-            });
-          }
-          break;
-          
-        case ConversationStep.SUGGEST_TACTIC:
-          // Answering trigger question
-          messageType = 'option_selection'; // Updated to match the coach message type
-          if (cravingServiceRef.current) {
-            await cravingServiceRef.current.updateIncident({ 
-              context: cleanValue 
-            });
-          }
-          break;
-
-        case ConversationStep.RATE_RESULT:
-          // Handle the result rating (1-10 scale)
-          messageType = 'intensity_rating';
-          const resultRating = parseInt(cleanValue, 10);
-          if (!isNaN(resultRating) && cravingServiceRef.current) {
-            await cravingServiceRef.current.updateIncident({ 
-              resultRating: resultRating 
-            });
-          }
-          break;
-          
-        case ConversationStep.ENCOURAGEMENT:
-          console.log('🔍 ENCOURAGEMENT step - cleanValue:', cleanValue);
-          messageType = 'tactic_response'; // Updated to match the coach message type
-          
-          // Check if this is the "Another idea" option FIRST
-          if (cleanValue === "Another idea") {
-            console.log('🔄 Processing "Another idea" request');
-            // User wants another intervention
-            const anotherIdeaIntervention = {
-              id: 'another-idea',
-              name: "Another idea",
-              description: "User requested another intervention option"
-            };
-            
-            // Set it in state for future reference
-            setChosenIntervention(anotherIdeaIntervention);
-            currentChosenIntervention = anotherIdeaIntervention; // Update local variable
-            
-            if (cravingServiceRef.current) {
-              // Create client message for "Another idea"
-              const clientMessage: Message = {
-                id: `client-${Date.now()}`,
-                sender: 'client',
-                text: displayText,
-                type: messageType,
-                timestamp: new Date(),
-              };
-
-              // Save client message to database and add to UI
-              await cravingServiceRef.current.saveMessage(clientMessage);
-              setMessages(prev => [...prev, clientMessage]);
-              
-              console.log('🚀 Calling getCoachResponse with anotherIdeaIntervention:', anotherIdeaIntervention);
-              // We need to use the anotherIdeaIntervention directly in the getCoachResponse call
-              const coachRes: CoachResponse = await getCoachResponse({
-                currentStep: ConversationStep.ENCOURAGEMENT,
-                clientName,
-                clientId,
-                selectedFood,
-                chosenIntervention: anotherIdeaIntervention
-              });
-              
-              // Add coach's response with a slight delay
-              setTimeout(async () => {
-                await addMessage(coachRes.response);
-                setCurrentStep(coachRes.nextStep);
-                setOptionChoices(coachRes.options || []);
-                if (coachRes.interventions) {
-                  setInterventions(coachRes.interventions);
-                }
-                setIsLoading(false);
-              }, 1000);
-              
-              console.log('✅ Early return from "Another idea" branch');
-              return; // Early return to prevent double execution
-            }
-          } else if (cleanValue === "Yes, I'll try it") {
-            console.log('🔄 Processing "Yes, I\'ll try it" acceptance');
-            // User accepted the intervention - find the intervention and update intervention_id
-            // When user clicks "Yes, I'll try it", we should use the current interventions list
-            if (interventions.length > 0) {
-              const selectedIntervention = interventions[0]; // First intervention in the list
-              if (selectedIntervention && selectedIntervention.id) {
-                setChosenIntervention(selectedIntervention);
-                currentChosenIntervention = selectedIntervention; // Update local variable
-                
-                if (cravingServiceRef.current) {
-                  await cravingServiceRef.current.updateIncident({
-                    interventionId: selectedIntervention.id,
-                    tacticUsed: selectedIntervention.name
-                  });
-                }
-              }
-            }
-            // Don't return here - let it continue to the general flow for encouragement
-          } else {
-            // Handle regular interventions
-            const intervention = interventions.find(i => i.name === cleanValue);
-            console.log('🔍 Found intervention:', intervention);
-            if (intervention) {
-              setChosenIntervention(intervention);
-              currentChosenIntervention = intervention; // Update local variable
-              
-              if (cravingServiceRef.current) {
-                if (intervention.id) {
-                  // User accepted the intervention directly - update intervention_id
-                  await cravingServiceRef.current.updateIncident({
-                    interventionId: intervention.id,
-                    tacticUsed: cleanValue
-                  });
-                }
-              }
-            }
-          }
-          break;
-      }
-
-      // Update message type for FOLLOWUP and RATE_RESULT steps
-      if (currentStep === ConversationStep.FOLLOWUP) {
-        messageType = 'followup_response';
-      } else if (currentStep === ConversationStep.RATE_RESULT) {
-        messageType = 'intensity_rating';
+      if (!cravingServiceRef.current) {
+        setIsLoading(false)
+        return
       }
       
-      // Create client message
-      const clientMessage: Message = {
-        id: `client-${Date.now()}`,
-        sender: 'client',
-        text: displayText,
-        type: messageType,
-        timestamp: new Date(),
-      };
-
-      // Save client message to database and add to UI
-      if (cravingServiceRef.current) {
-        await cravingServiceRef.current.saveMessage(clientMessage);
-      }
-      setMessages(prev => [...prev, clientMessage]);
-
-      console.log('🔍 About to call general getCoachResponse with currentChosenIntervention:', currentChosenIntervention);
-      // Get coach's response
-      const coachRes: CoachResponse = await getCoachResponse({
+      await cravingServiceRef.current.processUserInput({
+        input: cleanValue,
         currentStep,
         clientName,
-        clientId,
-        selectedFood,
-        chosenIntervention: currentChosenIntervention, // Use local variable instead of state
-      });
-      
-      // Add coach's response with a slight delay
-      setTimeout(async () => {
-        // Save coach response to database and add to UI
-        if (cravingServiceRef.current) {
-          await cravingServiceRef.current.saveMessage(coachRes.response);
+        // selectedFood,
+        chosenIntervention,
+        interventions,
+        isOption: true,
+        onMessage: addMessage,
+        onStateUpdate: ({ currentStep: newStep, optionChoices: newOptions, interventions: newInterventions, chosenIntervention: newChosen }) => {
+          setCurrentStep(newStep)
+          setOptionChoices(newOptions)
+          if (newInterventions) setInterventions(newInterventions)
+          if (newChosen !== undefined) setChosenIntervention(newChosen || undefined)
+          setIsLoading(false)
         }
-        setMessages(prev => [...prev, coachRes.response]);
-        
-        // Update state based on coach's response
-        setCurrentStep(coachRes.nextStep);
-        setOptionChoices(coachRes.options || []);
-        if (coachRes.interventions) {
-          setInterventions(coachRes.interventions);
-        }
-        
-        // Schedule follow-up if needed
-        if (coachRes.nextStep === ConversationStep.FOLLOWUP && currentChosenIntervention) {
-          setTimeout(async () => {
-            const followUpRes = await getCoachResponse({
-              currentStep: ConversationStep.FOLLOWUP,
-              clientName,
-              clientId,
-              selectedFood,
-              chosenIntervention: currentChosenIntervention,
-            })
-            await addMessage(followUpRes.response)
-            setCurrentStep(followUpRes.nextStep)
-            setOptionChoices(followUpRes.options || [])
-          }, 30 * 1000) // 30 seconds for testing
-        }
-        
-        setIsLoading(false);
-      }, 1000);
-      return; // Early return to prevent double execution
+      })
     } catch {
       setIsLoading(false);
     }

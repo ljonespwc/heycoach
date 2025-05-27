@@ -1,12 +1,15 @@
 import { createClient } from '@/lib/supabase/client';
 import {
   Message,
-  CravingIncident,
   Coach,
   Client,
-  ConversationStep
+  ConversationStep,
+  Intervention,
+  CravingIncident,
+  MessageType
 } from './craving-types';
 import * as CravingDB from './craving-db';
+import { getCoachResponse, type CoachResponse, type Option } from './craving-conversation';
 
 export type { Message } from './craving-types';
 export { ConversationStep } from './craving-types';
@@ -97,15 +100,22 @@ export class CravingService {
 
   async getCoachInfo(): Promise<Coach | null> {
     if (!this.coachId) return null;
-    return CravingDB.getCoachInfo(this.coachId);
+    return await CravingDB.getCoachInfo(this.coachId);
   }
 
-  // Get client information
   async getClientInfo(): Promise<Client | null> {
     if (!this.clientId) return null;
-    return CravingDB.fetchClientDetails(this.clientId);
+    return await CravingDB.fetchClientDetails(this.clientId);
   }
-  
+
+  async fetchClientDetails(clientId: string) {
+    return await CravingDB.fetchClientDetails(clientId);
+  }
+
+  async getCoachDetails(coachId: string) {
+    return await CravingDB.getCoachInfo(coachId);
+  }
+
   // Get both client and coach information
   async getSessionInfo(): Promise<{ client: Client | null, coach: Coach | null }> {
     if (!this.clientId || !this.coachId) {
@@ -160,8 +170,8 @@ export class CravingService {
       }
     }
     
-    const client = this.clientId ? await CravingDB.fetchClientDetails(this.clientId) : null;
-    const coach = this.coachId ? await CravingDB.getCoachInfo(this.coachId) : null;
+    const client = this.clientId ? await this.getClientInfo() : null;
+    const coach = this.coachId ? await this.getCoachInfo() : null;
     
     return { client, coach };
   }
@@ -247,13 +257,233 @@ export class CravingService {
     return CravingDB.updateIncident(this.incidentId, updates);
   }
 
-  scheduleFollowUp(minutes: number): void {
-    // For demo purposes, we'll just use setTimeout
-    setTimeout(() => {
-      // Follow-up would happen here after the specified minutes
-    }, minutes * 60 * 1000)
+  // Centralized message processing - handles both text input and option selection
+  async processUserInput({
+    input,
+    currentStep,
+    clientName,
+    selectedFood,
+    chosenIntervention,
+    interventions = [],
+    isOption = false,
+    onMessage,
+    onStateUpdate
+  }: {
+    input: string;
+    currentStep: ConversationStep;
+    clientName: string;
+    selectedFood?: string;
+    chosenIntervention?: Intervention | null;
+    interventions?: Intervention[];
+    isOption?: boolean;
+    onMessage: (message: Message) => Promise<void>;
+    onStateUpdate: (updates: {
+      currentStep: ConversationStep;
+      optionChoices: Array<Option | string>;
+      interventions?: Intervention[];
+      chosenIntervention?: Intervention | null;
+    }) => void;
+  }): Promise<void> {
+    
+    let messageType: MessageType = 'text';
+    let updatedChosenIntervention = chosenIntervention;
+    const cleanValue = input.trim();
+    
+    // Handle different conversation steps and message types
+    console.log('🔍 Processing input:', { input: cleanValue, currentStep, isOption });
+    if (isOption) {
+      switch (currentStep) {
+        case ConversationStep.GAUGE_INTENSITY:
+          messageType = 'option_selection';
+          // This is food selection - update trigger food
+          await this.updateIncident({ triggerFood: cleanValue });
+          break;
+          
+        case ConversationStep.IDENTIFY_LOCATION:
+          messageType = 'intensity_rating';
+          const intensity = parseInt(cleanValue, 10);
+          if (!isNaN(intensity)) {
+            await this.updateIncident({ initialIntensity: intensity });
+          }
+          break;
+          
+        case ConversationStep.IDENTIFY_TRIGGER:
+          messageType = 'option_selection';
+          await this.updateIncident({ context: cleanValue });
+          break;
+          
+        case ConversationStep.SUGGEST_TACTIC:
+          messageType = 'option_selection';
+          await this.updateIncident({ location: cleanValue });
+          break;
+
+        case ConversationStep.RATE_RESULT:
+          messageType = 'intensity_rating';
+          const resultRating = parseInt(cleanValue, 10);
+          console.log('RATE_RESULT: cleanValue =', cleanValue, 'resultRating =', resultRating);
+          if (!isNaN(resultRating)) {
+            console.log('Updating incident with result_rating:', resultRating);
+            await this.updateIncident({ result_rating: resultRating });
+          } else {
+            console.log('ERROR: resultRating is NaN, not updating incident');
+          }
+          break;
+          
+        case ConversationStep.ENCOURAGEMENT:
+          messageType = 'tactic_response';
+          
+          // Handle special cases for intervention acceptance
+          if (cleanValue === "Another idea") {
+            updatedChosenIntervention = {
+              id: 'another-idea',
+              name: "Another idea",
+              description: "User requested another intervention option"
+            };
+          } else if (cleanValue === "Yes, I'll try it") {
+            // User accepted the intervention - use the first intervention in the list
+            if (interventions.length > 0) {
+              const selectedIntervention = interventions[0];
+              if (selectedIntervention?.id) {
+                updatedChosenIntervention = selectedIntervention;
+                await this.updateIncident({
+                  interventionId: selectedIntervention.id,
+                  tacticUsed: selectedIntervention.name
+                });
+              }
+            }
+          } else {
+            // Handle regular interventions
+            const intervention = interventions.find(i => i.name === cleanValue);
+            if (intervention?.id) {
+              updatedChosenIntervention = intervention;
+              await this.updateIncident({
+                interventionId: intervention.id,
+                tacticUsed: intervention.name
+              });
+            }
+          }
+          break;
+
+        case ConversationStep.FOLLOWUP:
+          messageType = 'followup_response';
+          break;
+      }
+    }
+    
+    // Handle text input for certain steps
+    if (!isOption) {
+      switch (currentStep) {
+        case ConversationStep.RATE_RESULT:
+          messageType = 'intensity_rating';
+          const resultRating = parseInt(cleanValue, 10);
+          console.log('RATE_RESULT (text): cleanValue =', cleanValue, 'resultRating =', resultRating);
+          if (!isNaN(resultRating)) {
+            console.log('Updating incident with result_rating:', resultRating);
+            await this.updateIncident({ result_rating: resultRating });
+          } else {
+            console.log('ERROR: resultRating is NaN, not updating incident');
+          }
+          break;
+      }
+    }
+    
+    // Create and save client message
+    const clientMessage: Message = {
+      id: `client-${Date.now()}`,
+      sender: 'client',
+      text: cleanValue,
+      type: messageType,
+      timestamp: new Date(),
+    };
+    
+    await onMessage(clientMessage);
+    
+    // Get coach's response
+    const coachRes: CoachResponse = await getCoachResponse({
+      currentStep,
+      clientName,
+      clientId: this.clientId || '',
+      selectedFood,
+      chosenIntervention: updatedChosenIntervention || undefined,
+    });
+    
+    // Add coach's response with a slight delay
+    setTimeout(async () => {
+      await onMessage(coachRes.response);
+      
+      // Update UI state
+      onStateUpdate({
+        currentStep: coachRes.nextStep,
+        optionChoices: coachRes.options || [],
+        interventions: coachRes.interventions,
+        chosenIntervention: updatedChosenIntervention
+      });
+      
+      // Schedule follow-up if transitioning to FOLLOWUP step
+      if (coachRes.nextStep === ConversationStep.FOLLOWUP && updatedChosenIntervention) {
+        this.scheduleInternalFollowUp({
+          clientName,
+          selectedFood,
+          chosenIntervention: updatedChosenIntervention,
+          onMessage,
+          onStateUpdate
+        });
+      }
+    }, 1000);
   }
   
+  // Centralized follow-up scheduling
+  private scheduleInternalFollowUp({
+    clientName,
+    selectedFood,
+    chosenIntervention,
+    onMessage,
+    onStateUpdate
+  }: {
+    clientName: string;
+    selectedFood?: string;
+    chosenIntervention: Intervention;
+    onMessage: (message: Message) => Promise<void>;
+    onStateUpdate: (updates: {
+      currentStep: ConversationStep;
+      optionChoices: Array<Option | string>;
+    }) => void;
+  }): void {
+    setTimeout(async () => {
+      const followUpRes = await getCoachResponse({
+        currentStep: ConversationStep.FOLLOWUP,
+        clientName,
+        clientId: this.clientId || '',
+        selectedFood,
+        chosenIntervention,
+      });
+      
+      await onMessage(followUpRes.response);
+      onStateUpdate({
+        currentStep: followUpRes.nextStep,
+        optionChoices: followUpRes.options || []
+      });
+    }, 30 * 1000); // 30 seconds for testing
+  }
+
+  async getWelcomeMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
+    const welcomeRes = await getCoachResponse({
+      currentStep: ConversationStep.WELCOME,
+      clientName,
+      clientId: this.clientId || '',
+    });
+    return welcomeRes;
+  }
+
+  async getFoodSelectionMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
+    const foodSelectionRes = await getCoachResponse({
+      currentStep: ConversationStep.IDENTIFY_CRAVING,
+      clientName,
+      clientId: this.clientId || '',
+    });
+    return foodSelectionRes;
+  }
+
   // Helper method to get the initial intensity
   private async getInitialIntensity(): Promise<number> {
     if (!this.incidentId) return 0;
