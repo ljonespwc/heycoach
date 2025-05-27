@@ -270,8 +270,8 @@ export default function CravingSosPage() {
         setIsLoading(false)
         
         // Schedule follow-up if needed
-        if (coachRes.nextStep === ConversationStep.ENCOURAGEMENT) {
-          // Schedule follow-up in 15 minutes
+        if (coachRes.nextStep === ConversationStep.FOLLOWUP && chosenIntervention) {
+          // Schedule follow-up in 30 seconds for testing
           setTimeout(async () => {
             const followUpRes = await getCoachResponse({
               currentStep: ConversationStep.FOLLOWUP,
@@ -283,7 +283,7 @@ export default function CravingSosPage() {
             await addMessage(followUpRes.response)
             setCurrentStep(followUpRes.nextStep)
             setOptionChoices(followUpRes.options || [])
-          }, 15 * 60 * 1000) // 15 minutes in milliseconds
+          }, 30 * 1000) // 30 seconds for testing (was 15 minutes)
         }
       }, 1000)
     } catch {
@@ -370,6 +370,7 @@ export default function CravingSosPage() {
     try {
       // Determine message type based on current step
       let messageType: MessageType = 'text';
+      let currentChosenIntervention = chosenIntervention; // Track the intervention for this call
       
       // Handle the database updates based on the CURRENT step
       // This is critical - we need to update the correct fields based on which question
@@ -432,62 +433,96 @@ export default function CravingSosPage() {
           break;
           
         case ConversationStep.ENCOURAGEMENT:
-          // Find the selected intervention
+          console.log('🔍 ENCOURAGEMENT step - cleanValue:', cleanValue);
           messageType = 'tactic_response'; // Updated to match the coach message type
-          const intervention = interventions.find(i => i.name === cleanValue);
-          if (intervention) {
-            setChosenIntervention(intervention);
+          
+          // Check if this is the "Another idea" option FIRST
+          if (cleanValue === "Another idea") {
+            console.log('🔄 Processing "Another idea" request');
+            // User wants another intervention
+            const anotherIdeaIntervention = {
+              id: 'another-idea',
+              name: "Another idea",
+              description: "User requested another intervention option"
+            };
+            
+            // Set it in state for future reference
+            setChosenIntervention(anotherIdeaIntervention);
+            currentChosenIntervention = anotherIdeaIntervention; // Update local variable
+            
             if (cravingServiceRef.current) {
-              // Check if this is the "Another idea" option
-              if (cleanValue === "Another idea") {
-                // User wants another intervention
-                const anotherIdeaIntervention = {
-                  id: 'another-idea',
-                  name: "Another idea",
-                  description: "User requested another intervention option"
-                };
-                
-                // Set it in state for future reference
-                setChosenIntervention(anotherIdeaIntervention);
-                
-                // We need to use the anotherIdeaIntervention directly in the getCoachResponse call below
-                const coachRes: CoachResponse = await getCoachResponse({
-                  currentStep: ConversationStep.ENCOURAGEMENT,
-                  clientName,
-                  clientId,
-                  selectedFood,
-                  chosenIntervention: anotherIdeaIntervention
-                });
-                
-                // Add coach's response with a slight delay
-                setTimeout(async () => {
-                  await addMessage(coachRes.response);
-                  setCurrentStep(coachRes.nextStep);
-                  setOptionChoices(coachRes.options || []);
-                  setIsLoading(false);
-                }, 1000);
-                
-                return;
-              } else if (cleanValue === "Yes, I'll try it") {
-                // User accepted the intervention - find the intervention and update intervention_id
-                // When user clicks "Yes, I'll try it", we should use the current interventions list
-                if (interventions.length > 0) {
-                  const selectedIntervention = interventions[0]; // First intervention in the list
-                  if (selectedIntervention && selectedIntervention.id) {
-                    setChosenIntervention(selectedIntervention);
-                    
-                    await cravingServiceRef.current.updateIncident({
-                      interventionId: selectedIntervention.id,
-                      tacticUsed: selectedIntervention.name
-                    });
-                  }
+              // Create client message for "Another idea"
+              const clientMessage: Message = {
+                id: `client-${Date.now()}`,
+                sender: 'client',
+                text: displayText,
+                type: messageType,
+                timestamp: new Date(),
+              };
+
+              // Save client message to database and add to UI
+              await cravingServiceRef.current.saveMessage(clientMessage);
+              setMessages(prev => [...prev, clientMessage]);
+              
+              console.log('🚀 Calling getCoachResponse with anotherIdeaIntervention:', anotherIdeaIntervention);
+              // We need to use the anotherIdeaIntervention directly in the getCoachResponse call
+              const coachRes: CoachResponse = await getCoachResponse({
+                currentStep: ConversationStep.ENCOURAGEMENT,
+                clientName,
+                clientId,
+                selectedFood,
+                chosenIntervention: anotherIdeaIntervention
+              });
+              
+              // Add coach's response with a slight delay
+              setTimeout(async () => {
+                await addMessage(coachRes.response);
+                setCurrentStep(coachRes.nextStep);
+                setOptionChoices(coachRes.options || []);
+                if (coachRes.interventions) {
+                  setInterventions(coachRes.interventions);
                 }
-              } else if (intervention.id) {
-                // User accepted the intervention directly - update intervention_id
-                await cravingServiceRef.current.updateIncident({
-                  interventionId: intervention.id,
-                  tacticUsed: cleanValue
-                });
+                setIsLoading(false);
+              }, 1000);
+              
+              console.log('✅ Early return from "Another idea" branch');
+              return; // Early return to prevent double execution
+            }
+          } else if (cleanValue === "Yes, I'll try it") {
+            console.log('🔄 Processing "Yes, I\'ll try it" acceptance');
+            // User accepted the intervention - find the intervention and update intervention_id
+            // When user clicks "Yes, I'll try it", we should use the current interventions list
+            if (interventions.length > 0) {
+              const selectedIntervention = interventions[0]; // First intervention in the list
+              if (selectedIntervention && selectedIntervention.id) {
+                setChosenIntervention(selectedIntervention);
+                currentChosenIntervention = selectedIntervention; // Update local variable
+                
+                if (cravingServiceRef.current) {
+                  await cravingServiceRef.current.updateIncident({
+                    interventionId: selectedIntervention.id,
+                    tacticUsed: selectedIntervention.name
+                  });
+                }
+              }
+            }
+            // Don't return here - let it continue to the general flow for encouragement
+          } else {
+            // Handle regular interventions
+            const intervention = interventions.find(i => i.name === cleanValue);
+            console.log('🔍 Found intervention:', intervention);
+            if (intervention) {
+              setChosenIntervention(intervention);
+              currentChosenIntervention = intervention; // Update local variable
+              
+              if (cravingServiceRef.current) {
+                if (intervention.id) {
+                  // User accepted the intervention directly - update intervention_id
+                  await cravingServiceRef.current.updateIncident({
+                    interventionId: intervention.id,
+                    tacticUsed: cleanValue
+                  });
+                }
               }
             }
           }
@@ -516,15 +551,16 @@ export default function CravingSosPage() {
       }
       setMessages(prev => [...prev, clientMessage]);
 
+      console.log('🔍 About to call general getCoachResponse with currentChosenIntervention:', currentChosenIntervention);
       // Get coach's response
       const coachRes: CoachResponse = await getCoachResponse({
         currentStep,
         clientName,
         clientId,
         selectedFood,
-        chosenIntervention,
+        chosenIntervention: currentChosenIntervention, // Use local variable instead of state
       });
-
+      
       // Add coach's response with a slight delay
       setTimeout(async () => {
         // Save coach response to database and add to UI
@@ -540,8 +576,25 @@ export default function CravingSosPage() {
           setInterventions(coachRes.interventions);
         }
         
+        // Schedule follow-up if needed
+        if (coachRes.nextStep === ConversationStep.FOLLOWUP && currentChosenIntervention) {
+          setTimeout(async () => {
+            const followUpRes = await getCoachResponse({
+              currentStep: ConversationStep.FOLLOWUP,
+              clientName,
+              clientId,
+              selectedFood,
+              chosenIntervention: currentChosenIntervention,
+            })
+            await addMessage(followUpRes.response)
+            setCurrentStep(followUpRes.nextStep)
+            setOptionChoices(followUpRes.options || [])
+          }, 30 * 1000) // 30 seconds for testing
+        }
+        
         setIsLoading(false);
       }, 1000);
+      return; // Early return to prevent double execution
     } catch {
       setIsLoading(false);
     }
