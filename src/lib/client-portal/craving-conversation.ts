@@ -48,7 +48,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `What's calling your name right now? (tap or type)`,
+          text: `What's calling your name? (tap or type)`,
           type: 'option_selection',
           timestamp: now,
         },
