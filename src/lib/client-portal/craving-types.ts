@@ -1,7 +1,7 @@
 // Types and enums extracted from craving-service.ts
 
 export type MessageSender = 'coach' | 'client' | 'system';
-export type MessageType = 'text' | 'option_selection' | 'intensity_rating' | 'location_selection' | 'tactic_response' | 'followup_response';
+export type MessageType = 'text' | 'option_selection' | 'intensity_rating' | 'location_selection' | 'tactic_response';
 
 export interface Message {
   id: string;
@@ -57,7 +57,6 @@ export enum ConversationStep {
   SUGGEST_TACTIC = 'suggest_tactic',
   CONSENT_CHECK = 'consent_check',
   ENCOURAGEMENT = 'encouragement',
-  FOLLOWUP = 'followup',
   RATE_RESULT = 'rate_result',
   CLOSE = 'close',
 }

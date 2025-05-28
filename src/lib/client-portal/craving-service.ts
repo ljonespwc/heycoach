@@ -292,6 +292,7 @@ export class CravingService {
     // Handle different conversation steps and message types
     console.log('🔍 Processing input:', { input: cleanValue, currentStep, isOption });
     if (isOption) {
+      console.log('🔍 Processing as OPTION for step:', currentStep);
       switch (currentStep) {
         case ConversationStep.GAUGE_INTENSITY:
           messageType = 'option_selection';
@@ -309,21 +310,27 @@ export class CravingService {
           
         case ConversationStep.IDENTIFY_TRIGGER:
           messageType = 'option_selection';
-          await this.updateIncident({ context: cleanValue });
+          await this.updateIncident({ location: cleanValue });
           break;
           
         case ConversationStep.SUGGEST_TACTIC:
           messageType = 'option_selection';
-          await this.updateIncident({ location: cleanValue });
+          await this.updateIncident({ context: cleanValue });
           break;
 
         case ConversationStep.RATE_RESULT:
+          console.log('🔍 RATE_RESULT option case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
           const resultRating = parseInt(cleanValue, 10);
           console.log('RATE_RESULT: cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
             console.log('Updating incident with result_rating:', resultRating);
-            await this.updateIncident({ result_rating: resultRating });
+            await this.updateIncident({ 
+              result_rating: resultRating,
+              resolvedAt: new Date() // Mark as resolved when rating is provided
+            });
+            // Transition to CLOSE step after rating is provided
+            currentStep = ConversationStep.CLOSE;
           } else {
             console.log('ERROR: resultRating is NaN, not updating incident');
           }
@@ -363,10 +370,6 @@ export class CravingService {
             }
           }
           break;
-
-        case ConversationStep.FOLLOWUP:
-          messageType = 'followup_response';
-          break;
       }
     }
     
@@ -374,12 +377,18 @@ export class CravingService {
     if (!isOption) {
       switch (currentStep) {
         case ConversationStep.RATE_RESULT:
+          console.log('🔍 RATE_RESULT text case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
           const resultRating = parseInt(cleanValue, 10);
           console.log('RATE_RESULT (text): cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
             console.log('Updating incident with result_rating:', resultRating);
-            await this.updateIncident({ result_rating: resultRating });
+            await this.updateIncident({ 
+              result_rating: resultRating,
+              resolvedAt: new Date() // Mark as resolved when rating is provided
+            });
+            // Transition to CLOSE step after rating is provided
+            currentStep = ConversationStep.CLOSE;
           } else {
             console.log('ERROR: resultRating is NaN, not updating incident');
           }
@@ -388,6 +397,7 @@ export class CravingService {
     }
     
     // Create and save client message
+    console.log('🔍 Final messageType before creating message:', messageType);
     const clientMessage: Message = {
       id: `client-${Date.now()}`,
       sender: 'client',
@@ -419,8 +429,8 @@ export class CravingService {
         chosenIntervention: updatedChosenIntervention
       });
       
-      // Schedule follow-up if transitioning to FOLLOWUP step
-      if (coachRes.nextStep === ConversationStep.FOLLOWUP && updatedChosenIntervention) {
+      // Schedule follow-up if transitioning to RATE_RESULT step
+      if (coachRes.nextStep === ConversationStep.RATE_RESULT && updatedChosenIntervention) {
         this.scheduleInternalFollowUp({
           clientName,
           selectedFood,
@@ -451,7 +461,7 @@ export class CravingService {
   }): void {
     setTimeout(async () => {
       const followUpRes = await getCoachResponse({
-        currentStep: ConversationStep.FOLLOWUP,
+        currentStep: ConversationStep.RATE_RESULT,
         clientName,
         clientId: this.clientId || '',
         selectedFood,

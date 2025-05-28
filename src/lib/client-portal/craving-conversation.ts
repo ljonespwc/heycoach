@@ -169,7 +169,7 @@ export async function getCoachResponse({
             type: 'text',
             timestamp: now,
           },
-          nextStep: ConversationStep.FOLLOWUP
+          nextStep: ConversationStep.RATE_RESULT
         };
       } else if (isSecondOption) {
         console.log('Getting second intervention option for client:', clientId);
@@ -186,7 +186,7 @@ export async function getCoachResponse({
               type: 'text',
               timestamp: now,
             },
-            nextStep: ConversationStep.FOLLOWUP,
+            nextStep: ConversationStep.RATE_RESULT,
             options: [
               { emoji: '👍', name: "Yes, I'll try it" }
             ],
@@ -217,14 +217,15 @@ export async function getCoachResponse({
           id: `coach-${now.getTime()}`,
           sender: 'coach',
           text: `Great choice! ${chosenIntervention?.name ? chosenIntervention.name + ': ' + chosenIntervention.description : ''}
+
 After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
           type: 'text',
           timestamp: now,
         },
-        nextStep: ConversationStep.FOLLOWUP
+        nextStep: ConversationStep.RATE_RESULT
       };
-    case ConversationStep.FOLLOWUP:
-      // When we reach the follow-up step, mark the incident as resolved directly
+    case ConversationStep.RATE_RESULT:
+      // When we reach the rate result step, mark the incident as resolved
       if (clientId) {
         try {
           // Update the incident to set resolved_at
@@ -239,23 +240,11 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Hi again! Did the craving pass?`,
-          type: 'followup_response',
-          timestamp: now,
-        },
-        nextStep: ConversationStep.RATE_RESULT,
-        options: ['Yes completely', 'Somewhat', 'Not really']
-      };
-    case ConversationStep.RATE_RESULT:
-      return {
-        response: {
-          id: `coach-${now.getTime()}`,
-          sender: 'coach',
           text: `How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
           type: 'intensity_rating',
           timestamp: now,
         },
-        nextStep: ConversationStep.CLOSE
+        nextStep: ConversationStep.RATE_RESULT
       };
     case ConversationStep.CLOSE:
       return {
