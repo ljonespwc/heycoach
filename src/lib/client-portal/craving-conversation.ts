@@ -48,7 +48,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `What's calling your name? (tap or type)`,
+          text: `What's calling your name right now? (tap or type)`,
           type: 'option_selection',
           timestamp: now,
         },
@@ -240,7 +240,7 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
+          text: `Okay! How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
           type: 'intensity_rating',
           timestamp: now,
         },
