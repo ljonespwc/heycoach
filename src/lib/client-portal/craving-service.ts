@@ -475,6 +475,7 @@ export class CravingService {
       currentStep,
       clientName,
       clientId: this.clientId || '',
+      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
     });
     
@@ -522,6 +523,7 @@ export class CravingService {
         currentStep: ConversationStep.RATE_RESULT,
         clientName,
         clientId: this.clientId || '',
+        selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
         chosenIntervention,
       });
       
@@ -538,6 +540,7 @@ export class CravingService {
       currentStep: ConversationStep.WELCOME,
       clientName,
       clientId: this.clientId || '',
+      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
     });
     return welcomeRes;
   }
@@ -547,6 +550,7 @@ export class CravingService {
       currentStep: ConversationStep.IDENTIFY_CRAVING,
       clientName,
       clientId: this.clientId || '',
+      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
     });
     return foodSelectionRes;
   }
