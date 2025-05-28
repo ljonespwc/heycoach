@@ -263,7 +263,6 @@ export class CravingService {
     input,
     currentStep,
     clientName,
-    selectedFood,
     chosenIntervention,
     interventions = [],
     isOption = false,
@@ -273,7 +272,6 @@ export class CravingService {
     input: string;
     currentStep: ConversationStep;
     clientName: string;
-    selectedFood?: string;
     chosenIntervention?: Intervention | null;
     interventions?: Intervention[];
     isOption?: boolean;
@@ -384,6 +382,62 @@ export class CravingService {
     // Handle text input for certain steps
     if (!isOption) {
       switch (currentStep) {
+        case ConversationStep.GAUGE_INTENSITY:
+          // Text input for food selection (like "hot dog")
+          messageType = 'option_selection';
+          this.selectedFood = cleanValue; // Store selected food for later use
+          await this.updateIncident({ triggerFood: cleanValue });
+          break;
+          
+        case ConversationStep.IDENTIFY_LOCATION:
+          // Text input for intensity rating (like "8")
+          messageType = 'intensity_rating';
+          const intensity = parseInt(cleanValue, 10);
+          if (!isNaN(intensity)) {
+            await this.updateIncident({ initialIntensity: intensity });
+          }
+          break;
+          
+        case ConversationStep.IDENTIFY_TRIGGER:
+          // Text input for location (like "kitchen")
+          messageType = 'option_selection';
+          await this.updateIncident({ location: cleanValue });
+          break;
+          
+        case ConversationStep.SUGGEST_TACTIC:
+          // Text input for trigger context (like "feeling lonely")
+          messageType = 'option_selection';
+          await this.updateIncident({ context: cleanValue });
+          break;
+          
+        case ConversationStep.ENCOURAGEMENT:
+          // Text input for intervention acceptance (like "yes" or "no")
+          messageType = 'tactic_response';
+          
+          // Handle text variations of acceptance
+          const lowerInput = cleanValue.toLowerCase();
+          if (lowerInput === "yes" || lowerInput === "y" || lowerInput === "ok" || lowerInput === "sure") {
+            // User accepted the intervention - use the first intervention in the list
+            if (interventions.length > 0) {
+              const selectedIntervention = interventions[0];
+              if (selectedIntervention?.id) {
+                updatedChosenIntervention = selectedIntervention;
+                await this.updateIncident({
+                  interventionId: selectedIntervention.id,
+                  tacticUsed: selectedIntervention.name
+                });
+              }
+            }
+          } else if (lowerInput === "no" || lowerInput === "n" || lowerInput.includes("another") || lowerInput.includes("different")) {
+            // User wants another option
+            updatedChosenIntervention = {
+              id: 'another-idea',
+              name: "Another idea",
+              description: "User requested another intervention option"
+            };
+          }
+          break;
+          
         case ConversationStep.RATE_RESULT:
           console.log('🔍 RATE_RESULT text case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
@@ -421,7 +475,6 @@ export class CravingService {
       currentStep,
       clientName,
       clientId: this.clientId || '',
-      selectedFood: this.selectedFood || undefined, // Pass selectedFood to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
     });
     
@@ -441,7 +494,6 @@ export class CravingService {
       if (coachRes.nextStep === ConversationStep.RATE_RESULT && updatedChosenIntervention) {
         this.scheduleInternalFollowUp({
           clientName,
-          selectedFood: this.selectedFood || undefined, // Pass selectedFood to follow-up
           chosenIntervention: updatedChosenIntervention,
           onMessage,
           onStateUpdate
@@ -453,13 +505,11 @@ export class CravingService {
   // Centralized follow-up scheduling
   private scheduleInternalFollowUp({
     clientName,
-    selectedFood,
     chosenIntervention,
     onMessage,
     onStateUpdate
   }: {
     clientName: string;
-    selectedFood?: string;
     chosenIntervention: Intervention;
     onMessage: (message: Message) => Promise<void>;
     onStateUpdate: (updates: {
@@ -472,7 +522,6 @@ export class CravingService {
         currentStep: ConversationStep.RATE_RESULT,
         clientName,
         clientId: this.clientId || '',
-        selectedFood,
         chosenIntervention,
       });
       
