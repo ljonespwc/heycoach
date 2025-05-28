@@ -291,17 +291,21 @@ export class CravingService {
     
     // Handle different conversation steps and message types
     console.log('🔍 Processing input:', { input: cleanValue, currentStep, isOption });
+    
+    // NOTE: Database updates happen when ENTERING a step (using input from previous step)
+    // This "on-entry" pattern ensures data is captured immediately when user provides it
     if (isOption) {
       console.log('🔍 Processing as OPTION for step:', currentStep);
       switch (currentStep) {
         case ConversationStep.GAUGE_INTENSITY:
           messageType = 'option_selection';
-          // This is food selection - update trigger food
+          // Entering GAUGE_INTENSITY: save food selection from IDENTIFY_CRAVING
           await this.updateIncident({ triggerFood: cleanValue });
           break;
           
         case ConversationStep.IDENTIFY_LOCATION:
           messageType = 'intensity_rating';
+          // Entering IDENTIFY_LOCATION: save intensity rating from GAUGE_INTENSITY
           const intensity = parseInt(cleanValue, 10);
           if (!isNaN(intensity)) {
             await this.updateIncident({ initialIntensity: intensity });
@@ -310,11 +314,13 @@ export class CravingService {
           
         case ConversationStep.IDENTIFY_TRIGGER:
           messageType = 'option_selection';
+          // Entering IDENTIFY_TRIGGER: save location from IDENTIFY_LOCATION
           await this.updateIncident({ location: cleanValue });
           break;
           
         case ConversationStep.SUGGEST_TACTIC:
           messageType = 'option_selection';
+          // Entering SUGGEST_TACTIC: save trigger context from IDENTIFY_TRIGGER
           await this.updateIncident({ context: cleanValue });
           break;
 
