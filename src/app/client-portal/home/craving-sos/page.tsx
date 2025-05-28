@@ -19,6 +19,7 @@ export default function CravingSosPage() {
   const [chosenIntervention, setChosenIntervention] = useState<Intervention | undefined>()
   const [interventions, setInterventions] = useState<Intervention[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const cravingServiceRef = useRef<CravingService | null>(null)
   // Track if an incident has been created
   const [, setIncidentCreated] = useState(false)
@@ -218,6 +219,13 @@ export default function CravingSosPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-focus input after coach messages
+  useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isLoading, messages.length])
 
   const handleSendMessage = async () => {
     if ((!inputValue.trim() && !optionChoices.length) || isLoading) return
@@ -456,6 +464,7 @@ export default function CravingSosPage() {
       <div className="p-4 border-t border-gray-200 bg-white">
         <div className="flex items-center space-x-2">
           <input
+            ref={inputRef}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
