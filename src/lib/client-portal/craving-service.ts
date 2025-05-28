@@ -20,6 +20,7 @@ export class CravingService {
   private coachId: string | null = null
   private incidentId: string | null = null
   private currentStep: ConversationStep = ConversationStep.WELCOME
+  private selectedFood: string | null = null // Store selected food across conversation steps
   
   constructor() {
     // Constructor can't be async, initialization will be handled by the page component
@@ -300,6 +301,7 @@ export class CravingService {
         case ConversationStep.GAUGE_INTENSITY:
           messageType = 'option_selection';
           // Entering GAUGE_INTENSITY: save food selection from IDENTIFY_CRAVING
+          this.selectedFood = cleanValue; // Store selected food for later use
           await this.updateIncident({ triggerFood: cleanValue });
           break;
           
@@ -419,7 +421,7 @@ export class CravingService {
       currentStep,
       clientName,
       clientId: this.clientId || '',
-      selectedFood,
+      selectedFood: this.selectedFood || undefined, // Pass selectedFood to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
     });
     
@@ -439,7 +441,7 @@ export class CravingService {
       if (coachRes.nextStep === ConversationStep.RATE_RESULT && updatedChosenIntervention) {
         this.scheduleInternalFollowUp({
           clientName,
-          selectedFood,
+          selectedFood: this.selectedFood || undefined, // Pass selectedFood to follow-up
           chosenIntervention: updatedChosenIntervention,
           onMessage,
           onStateUpdate
