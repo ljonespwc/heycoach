@@ -13,8 +13,8 @@ export async function fetchClientByToken(token: string): Promise<{ clientId: str
       .single();
     if (error || !data) return { clientId: null, coachId: null };
     return { clientId: data.id, coachId: data.coach_id };
-  } catch (error) {
-    console.error('❌ fetchClientByToken failed:', error);
+  } catch {
+    console.error('❌ fetchClientByToken failed');
     return { clientId: null, coachId: null };
   }
 }
@@ -28,8 +28,8 @@ export async function fetchClientDetails(clientId: string): Promise<Client | nul
       .single();
     if (error) return null;
     return data;
-  } catch (error) {
-    console.error('❌ fetchClientDetails failed:', error);
+  } catch {
+    console.error('❌ fetchClientDetails failed');
     return null;
   }
 }
@@ -48,17 +48,15 @@ export async function getCoachInfo(coachId: string): Promise<Coach | null> {
       return coachData as Coach;
     }
     return null;
-  } catch (error) {
-    console.error('❌ getCoachInfo failed:', error);
+  } catch {
+    console.error('❌ getCoachInfo failed');
     return null;
   }
 }
 
 // Create a new craving incident
 export async function createCravingIncident(clientId: string | null): Promise<string | null> {
-  console.log('Creating craving incident for client:', clientId);
   if (!clientId) {
-    console.log('No client ID provided, using mock');
     // For dev/demo fallback
     return `mock-${Date.now()}`;
   }
@@ -85,19 +83,13 @@ export async function createCravingIncident(clientId: string | null): Promise<st
       .single();
     
     if (error) {
-      console.error('❌ Error creating craving incident:', error);
-      console.error('❌ Database error details:', { 
-        message: error?.message || 'Unknown error', 
-        code: error?.code || 'No code', 
-        hint: error?.hint || 'No hint' 
-      });
+      console.error('❌ Error creating craving incident');
       return null;
     }
     if (!data) {
       console.error('❌ No data returned from craving incident creation');
       return null;
     }
-    console.log('Successfully created craving incident:', data.id);
     return data.id;
   } catch (e) {
     console.error('Exception creating craving incident:', e);
@@ -112,9 +104,7 @@ import { Intervention } from './craving-types';
 
 // Fetch active client interventions with details from craving_interventions table
 export async function getActiveClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
-  console.log('Fetching active interventions for client:', clientId);
   if (!clientId) {
-    console.log('No client ID provided, returning empty array');
     return [];
   }
   
@@ -139,7 +129,6 @@ export async function getActiveClientInterventions(clientId: string, count: numb
     ];
     
     // Step 1: Get active client interventions
-    console.log('Querying client_interventions table...');
     const { data: clientInterventions, error: clientError } = await supabase
       .from('client_interventions')
       .select('intervention_id')
@@ -147,8 +136,6 @@ export async function getActiveClientInterventions(clientId: string, count: numb
       .eq('intervention_type', 'craving')
       .eq('active', true)
       .limit(count);
-    
-    console.log('Client interventions query result:', { clientInterventions, clientError });
     
     if (clientError) {
       console.error('Error fetching client interventions:', clientError);
@@ -260,12 +247,7 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       .select()
       .single();
     if (error) {
-      console.error('❌ Error saving message:', error);
-      console.error('❌ Database error details:', { 
-        message: error?.message || 'Unknown error', 
-        code: error?.code || 'No code', 
-        hint: error?.hint || 'No hint' 
-      });
+      console.error('❌ Error saving message');
       return null;
     }
     if (!data) {
@@ -281,8 +263,8 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       timestamp: new Date(data.created_at),
       metadata: data.metadata
     };
-  } catch (error) {
-    console.error('❌ saveMessage failed:', error);
+  } catch {
+    console.error('❌ saveMessage failed');
     return null;
   }
 }
@@ -308,8 +290,8 @@ export async function getMessages(incidentId: string): Promise<Message[]> {
       timestamp: new Date(msg.created_at as string),
       metadata: msg.metadata as Record<string, unknown>
     }));
-  } catch (error) {
-    console.error('❌ getMessages failed:', error);
+  } catch {
+    console.error('❌ getMessages failed');
     return [];
   }
 }
@@ -322,14 +304,12 @@ export async function updateIncident(
   incidentId: string,
   updates: Partial<CravingIncident> & { tacticUsed?: string }
 ): Promise<boolean> {
-  console.log('Updating incident:', incidentId, 'with updates:', updates);
   if (!incidentId) {
     console.error('No incident ID provided for update');
     return false;
   }
   // For dev/demo fallback
   if (incidentId.startsWith('mock-')) {
-    console.log('Mock incident, simulating success');
     return true;
   }
   try {
@@ -337,31 +317,30 @@ export async function updateIncident(
     if (updates.triggerFood) updateObj.trigger_food = updates.triggerFood;
     if (updates.initialIntensity) updateObj.initial_intensity = updates.initialIntensity;
     if (updates.result_rating) {
-      console.log('DB: Adding result_rating to update:', updates.result_rating);
       updateObj.result_rating = updates.result_rating;
     }
     if (updates.location) updateObj.location = updates.location;
     if (updates.context) updateObj.context = updates.context;
     if (updates.resolvedAt) updateObj.resolved_at = updates.resolvedAt.toISOString();
-    if (updates.interventionId) updateObj.intervention_id = updates.interventionId;
+    if (updates.interventionId && !updates.interventionId.startsWith('fallback-')) {
+      updateObj.intervention_id = updates.interventionId;
+    }
     // Note: tacticUsed is not stored in the database, it's just for logging purposes
 
-    console.log('Sending update to database:', updateObj);
+    // Don't send empty updates
+    if (Object.keys(updateObj).length === 0) {
+      return true;
+    }
+    
     const { error } = await supabase
       .from('craving_incidents')
       .update(updateObj)
       .eq('id', incidentId);
 
     if (error) {
-      console.error('❌ Error updating incident:', error);
-      console.error('❌ Database error details:', { 
-        message: error?.message || 'Unknown error', 
-        code: error?.code || 'No code', 
-        hint: error?.hint || 'No hint' 
-      });
+      console.error('❌ Error updating incident');
       return false;
     }
-    console.log('Successfully updated incident');
     return true;
   } catch (e) {
     console.error('Exception updating incident:', e);
@@ -391,12 +370,7 @@ export async function updateIncidentByClientId(
       .limit(1);
       
     if (error) {
-      console.error('❌ Error finding active incident for client:', error);
-      console.error('❌ Database error details:', { 
-        message: error?.message || 'Unknown error', 
-        code: error?.code || 'No code', 
-        hint: error?.hint || 'No hint' 
-      });
+      console.error('❌ Error finding active incident for client');
       return false;
     }
     if (!data || data.length === 0) {

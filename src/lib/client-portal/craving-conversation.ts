@@ -1,6 +1,7 @@
 // Conversation flow logic for Craving SOS
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getRandomClientInterventions, updateIncidentByClientId } from './craving-db';
+import { generateCoachResponse, getFallbackResponse } from '../openai/coach-ai';
 
 export interface Option {
   emoji?: string;
@@ -22,33 +23,75 @@ export async function getCoachResponse({
   clientName,
   clientId,
   selectedFood,
-  chosenIntervention
+  chosenIntervention,
+  coachName,
+  intensity,
+  location,
+  trigger
 }: {
   currentStep: ConversationStep;
   clientName: string;
   clientId: string;
   selectedFood?: string;
   chosenIntervention?: { name: string; description: string };
+  coachName?: string;
+  intensity?: number;
+  location?: string;
+  trigger?: string;
 }): Promise<CoachResponse> {
   const now = new Date();
+  
+  // Helper function to get AI response with fallback
+  const getResponseText = async (step: ConversationStep, interventions?: Intervention[]): Promise<string> => {
+    try {
+      const aiResponse = await generateCoachResponse({
+        clientName,
+        coachName,
+        selectedFood,
+        intensity,
+        location,
+        trigger,
+        chosenIntervention,
+        interventions,
+        currentStep: step
+      });
+      return aiResponse;
+    } catch (error) {
+      console.log('🤖 Falling back to standard response for', step, 'due to:', error);
+      return getFallbackResponse(step, {
+        clientName,
+        coachName,
+        selectedFood,
+        intensity,
+        location,
+        trigger,
+        chosenIntervention,
+        interventions,
+        currentStep: step
+      });
+    }
+  };
+  
   switch (currentStep) {
     case ConversationStep.WELCOME:
+      const welcomeText = await getResponseText(ConversationStep.WELCOME);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Hi ${clientName}, I see you're having a craving moment. Let's work through this together.`,
+          text: welcomeText,
           type: 'text',
           timestamp: now,
         },
         nextStep: ConversationStep.IDENTIFY_CRAVING
       };
     case ConversationStep.IDENTIFY_CRAVING:
+      const cravingText = await getResponseText(ConversationStep.IDENTIFY_CRAVING);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `What's calling your name? (tap or type)`,
+          text: cravingText,
           type: 'option_selection',
           timestamp: now,
         },
@@ -62,11 +105,12 @@ export async function getCoachResponse({
         ]
       };
     case ConversationStep.GAUGE_INTENSITY:
+      const intensityText = await getResponseText(ConversationStep.GAUGE_INTENSITY);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `How intense is the pull right now? (1-10)`,
+          text: intensityText,
           type: 'intensity_rating',
           timestamp: now,
         },
@@ -77,7 +121,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Where are you right now?`,
+          text: await getResponseText(ConversationStep.IDENTIFY_LOCATION),
           type: 'location_selection',
           timestamp: now,
         },
@@ -95,7 +139,7 @@ export async function getCoachResponse({
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `What do you think may have triggered this craving?`,
+          text: await getResponseText(ConversationStep.IDENTIFY_TRIGGER),
           type: 'option_selection',
           timestamp: now,
         },
@@ -114,11 +158,13 @@ export async function getCoachResponse({
       
       if (interventions.length === 0) {
         // Fallback if no interventions found
+        const fallbackInterventions = [{ id: '', name: 'Deep breathing and water', description: 'Take 3-5 deep breaths and drink a full glass of water slowly.' }];
+        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, fallbackInterventions);
         return {
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, let's try **"Deep breathing and water"**: Take 3-5 deep breaths and drink a full glass of water slowly. Want to give it a try?`,
+            text: tacticText,
             type: 'tactic_response',
             timestamp: now,
           },
@@ -127,16 +173,17 @@ export async function getCoachResponse({
             { emoji: '👍', name: "Yes, I'll try it" },
             { emoji: '💡', name: "Another idea" }
           ],
-          interventions: [{ id: '', name: 'Deep breathing and water', description: 'Take 3-5 deep breaths and drink a full glass of water slowly.' }]
+          interventions: fallbackInterventions
         };
       }
       
       // We have an intervention to suggest
+      const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, interventions);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `I understand how challenging this can be. Instead of reaching for ${selectedFood || 'that'}, how about trying "${interventions[0].name}"? ${interventions[0].description}. Want to give it a try?`,
+          text: tacticText,
           type: 'tactic_response',
           timestamp: now,
         },
@@ -161,11 +208,12 @@ export async function getCoachResponse({
       if (isAcceptingSecondIntervention) {
         console.log('User accepted the second intervention');
         // Show encouragement for the second intervention
+        const secondEncouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
         return {
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
+            text: secondEncouragementText,
             type: 'text',
             timestamp: now,
           },
@@ -178,11 +226,13 @@ export async function getCoachResponse({
         
         if (secondIntervention.length === 0) {
           // Fallback if no interventions found
+          const fallbackSecondInterventions = [{ id: '', name: 'Physical activity', description: 'Take a short walk or do some gentle stretching to redirect your attention and energy.' }];
+          const secondOptionText = await getResponseText(ConversationStep.ENCOURAGEMENT, fallbackSecondInterventions);
           return {
             response: {
               id: `coach-${now.getTime()}`,
               sender: 'coach',
-              text: `Let's try a different approach. How about taking a short walk or doing some gentle stretching? This can help redirect your attention and energy. Want to give it a try?`,
+              text: secondOptionText,
               type: 'text',
               timestamp: now,
             },
@@ -190,16 +240,17 @@ export async function getCoachResponse({
             options: [
               { emoji: '👍', name: "Yes, I'll try it" }
             ],
-            interventions: [{ id: '', name: 'Physical activity', description: 'Take a short walk or do some gentle stretching to redirect your attention and energy.' }]
+            interventions: fallbackSecondInterventions
           };
         }
         
         // We have a second intervention to suggest
+        const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, secondIntervention);
         return {
           response: {
             id: `coach-${now.getTime()}`,
             sender: 'coach',
-            text: `Let's try a different approach. How about ${secondIntervention[0].name}? ${secondIntervention[0].description} Want to give it a try?`,
+            text: secondInterventionText,
             type: 'text',
             timestamp: now,
           },
@@ -212,13 +263,12 @@ export async function getCoachResponse({
       }
       
       // First option was accepted - show encouragement and include full description of the chosen intervention
+      const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Great choice! ${chosenIntervention?.name ? chosenIntervention.name + ': ' + chosenIntervention.description : ''}
-
-After your strategy, take a moment to notice how you feel. I'll check back with you in 15 minutes to see how you did. You've got this!`,
+          text: encouragementText,
           type: 'text',
           timestamp: now,
         },
@@ -236,33 +286,36 @@ After your strategy, take a moment to notice how you feel. I'll check back with 
         }
       }
       
+      const rateResultText = await getResponseText(ConversationStep.RATE_RESULT);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Okay! How would you rate the effectiveness of the strategy in reducing your craving? (1-10)`,
+          text: rateResultText,
           type: 'intensity_rating',
           timestamp: now,
         },
         nextStep: ConversationStep.RATE_RESULT
       };
     case ConversationStep.CLOSE:
+      const closeText = await getResponseText(ConversationStep.CLOSE);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `Thanks for sharing. Every craving is an opportunity to learn what works for you. I'm proud of your effort today!`,
+          text: closeText,
           type: 'text',
           timestamp: now,
         },
         nextStep: ConversationStep.CLOSE
       };
     default:
+      const defaultText = await getResponseText(ConversationStep.CLOSE);
       return {
         response: {
           id: `coach-${now.getTime()}`,
           sender: 'coach',
-          text: `If you need more support, just start a new SOS!`,
+          text: defaultText,
           type: 'text',
           timestamp: now,
         },

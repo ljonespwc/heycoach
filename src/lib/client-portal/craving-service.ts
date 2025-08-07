@@ -21,6 +21,10 @@ export class CravingService {
   private incidentId: string | null = null
   private currentStep: ConversationStep = ConversationStep.WELCOME
   private selectedFood: string | null = null // Store selected food across conversation steps
+  private intensity: number | null = null // Store intensity rating
+  private location: string | null = null // Store location
+  private trigger: string | null = null // Store trigger context
+  private coachName: string | null = null // Store coach name for AI responses
   
   constructor() {
     // Constructor can't be async, initialization will be handled by the page component
@@ -180,6 +184,11 @@ export class CravingService {
     const client = this.clientId ? await this.getClientInfo() : null;
     const coach = this.coachId ? await this.getCoachInfo() : null;
     
+    // Store coach name for AI responses
+    if (coach) {
+      this.coachName = coach.full_name;
+    }
+    
     return { client, coach };
   }
 
@@ -338,6 +347,7 @@ export class CravingService {
           // Entering IDENTIFY_LOCATION: save intensity rating from GAUGE_INTENSITY
           const intensity = parseInt(cleanValue, 10);
           if (!isNaN(intensity)) {
+            this.intensity = intensity;
             await this.updateIncident({ initialIntensity: intensity });
           }
           break;
@@ -345,12 +355,14 @@ export class CravingService {
         case ConversationStep.IDENTIFY_TRIGGER:
           messageType = 'option_selection';
           // Entering IDENTIFY_TRIGGER: save location from IDENTIFY_LOCATION
+          this.location = cleanValue;
           await this.updateIncident({ location: cleanValue });
           break;
           
         case ConversationStep.SUGGEST_TACTIC:
           messageType = 'option_selection';
           // Entering SUGGEST_TACTIC: save trigger context from IDENTIFY_TRIGGER
+          this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
           break;
 
@@ -424,6 +436,7 @@ export class CravingService {
           messageType = 'intensity_rating';
           const intensity = parseInt(cleanValue, 10);
           if (!isNaN(intensity)) {
+            this.intensity = intensity;
             await this.updateIncident({ initialIntensity: intensity });
           }
           break;
@@ -431,12 +444,14 @@ export class CravingService {
         case ConversationStep.IDENTIFY_TRIGGER:
           // Text input for location (like "kitchen")
           messageType = 'option_selection';
+          this.location = cleanValue;
           await this.updateIncident({ location: cleanValue });
           break;
           
         case ConversationStep.SUGGEST_TACTIC:
           // Text input for trigger context (like "feeling lonely")
           messageType = 'option_selection';
+          this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
           break;
           
@@ -507,6 +522,10 @@ export class CravingService {
       clientId: this.clientId || '',
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
+      coachName: this.coachName || undefined,
+      intensity: this.intensity || undefined,
+      location: this.location || undefined,
+      trigger: this.trigger || undefined,
     });
     
     // Add coach's response with a slight delay
@@ -555,6 +574,10 @@ export class CravingService {
         clientId: this.clientId || '',
         selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
         chosenIntervention,
+        coachName: this.coachName || undefined,
+        intensity: this.intensity || undefined,
+        location: this.location || undefined,
+        trigger: this.trigger || undefined,
       });
       
       await onMessage(followUpRes.response);
@@ -571,6 +594,10 @@ export class CravingService {
       clientName,
       clientId: this.clientId || '',
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+      coachName: this.coachName || undefined,
+      intensity: this.intensity || undefined,
+      location: this.location || undefined,
+      trigger: this.trigger || undefined,
     });
     return welcomeRes;
   }
@@ -581,6 +608,10 @@ export class CravingService {
       clientName,
       clientId: this.clientId || '',
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+      coachName: this.coachName || undefined,
+      intensity: this.intensity || undefined,
+      location: this.location || undefined,
+      trigger: this.trigger || undefined,
     });
     return foodSelectionRes;
   }
