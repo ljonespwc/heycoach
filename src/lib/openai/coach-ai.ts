@@ -51,7 +51,7 @@ export async function generateCoachResponse(context: CoachContext): Promise<stri
  * Fallback responses in case AI fails
  */
 export const fallbackResponses: Record<ConversationStep, string> = {
-  [ConversationStep.WELCOME]: `Hi {clientName}, I see you're having a craving moment. Let's work through this together.`,
+  [ConversationStep.WELCOME]: `What's on your mind?`,
   [ConversationStep.IDENTIFY_CRAVING]: `What's calling your name? (tap or type)`,
   [ConversationStep.GAUGE_INTENSITY]: `How intense is the pull right now? (1-10)`,
   [ConversationStep.IDENTIFY_LOCATION]: `Where are you right now?`,
@@ -70,7 +70,6 @@ export function getFallbackResponse(step: ConversationStep, context: CoachContex
   let response = fallbackResponses[step];
   
   // Simple string substitution for context
-  response = response.replace('{clientName}', context.clientName);
   response = response.replace('{selectedFood}', context.selectedFood || 'that');
   response = response.replace('{interventionName}', context.chosenIntervention?.name || 'this strategy');
   response = response.replace('{interventionDescription}', context.chosenIntervention?.description || '');

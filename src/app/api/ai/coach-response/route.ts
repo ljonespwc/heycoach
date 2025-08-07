@@ -68,7 +68,7 @@ function getPromptForStep(context: CoachContext) {
   
   // Build conversation context from history
   const conversationContext = conversationHistory && conversationHistory.length > 0 
-    ? conversationHistory.map(msg => `${msg.sender === 'client' ? clientName : (coachName || 'Coach')}: ${msg.text}`).join('\n')
+    ? conversationHistory.map(msg => `${msg.sender === 'client' ? 'Client' : 'Coach'}: ${msg.text}`).join('\n')
     : '';
     
   const hasConversationHistory = conversationContext.length > 0;
