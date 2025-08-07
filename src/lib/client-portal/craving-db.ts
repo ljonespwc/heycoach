@@ -13,7 +13,8 @@ export async function fetchClientByToken(token: string): Promise<{ clientId: str
       .single();
     if (error || !data) return { clientId: null, coachId: null };
     return { clientId: data.id, coachId: data.coach_id };
-  } catch {
+  } catch (error) {
+    console.error('❌ fetchClientByToken failed:', error);
     return { clientId: null, coachId: null };
   }
 }
@@ -27,7 +28,8 @@ export async function fetchClientDetails(clientId: string): Promise<Client | nul
       .single();
     if (error) return null;
     return data;
-  } catch {
+  } catch (error) {
+    console.error('❌ fetchClientDetails failed:', error);
     return null;
   }
 }
@@ -46,7 +48,8 @@ export async function getCoachInfo(coachId: string): Promise<Coach | null> {
       return coachData as Coach;
     }
     return null;
-  } catch {
+  } catch (error) {
+    console.error('❌ getCoachInfo failed:', error);
     return null;
   }
 }
@@ -82,11 +85,16 @@ export async function createCravingIncident(clientId: string | null): Promise<st
       .single();
     
     if (error) {
-      console.error('Error creating craving incident:', error);
+      console.error('❌ Error creating craving incident:', error);
+      console.error('❌ Database error details:', { 
+        message: error?.message || 'Unknown error', 
+        code: error?.code || 'No code', 
+        hint: error?.hint || 'No hint' 
+      });
       return null;
     }
     if (!data) {
-      console.error('No data returned from craving incident creation');
+      console.error('❌ No data returned from craving incident creation');
       return null;
     }
     console.log('Successfully created craving incident:', data.id);
@@ -252,11 +260,16 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       .select()
       .single();
     if (error) {
-      console.error('Error saving message:', error);
+      console.error('❌ Error saving message:', error);
+      console.error('❌ Database error details:', { 
+        message: error?.message || 'Unknown error', 
+        code: error?.code || 'No code', 
+        hint: error?.hint || 'No hint' 
+      });
       return null;
     }
     if (!data) {
-      console.error('No data returned from message insert');
+      console.error('❌ No data returned from message insert');
       return null;
     }
     console.log('Successfully saved message:', data.id);
@@ -268,7 +281,8 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       timestamp: new Date(data.created_at),
       metadata: data.metadata
     };
-  } catch {
+  } catch (error) {
+    console.error('❌ saveMessage failed:', error);
     return null;
   }
 }
@@ -294,7 +308,8 @@ export async function getMessages(incidentId: string): Promise<Message[]> {
       timestamp: new Date(msg.created_at as string),
       metadata: msg.metadata as Record<string, unknown>
     }));
-  } catch {
+  } catch (error) {
+    console.error('❌ getMessages failed:', error);
     return [];
   }
 }
@@ -338,7 +353,12 @@ export async function updateIncident(
       .eq('id', incidentId);
 
     if (error) {
-      console.error('Error updating incident:', error);
+      console.error('❌ Error updating incident:', error);
+      console.error('❌ Database error details:', { 
+        message: error?.message || 'Unknown error', 
+        code: error?.code || 'No code', 
+        hint: error?.hint || 'No hint' 
+      });
       return false;
     }
     console.log('Successfully updated incident');
@@ -370,8 +390,17 @@ export async function updateIncidentByClientId(
       .order('created_at', { ascending: false })
       .limit(1);
       
-    if (error || !data || data.length === 0) {
-      console.error('Error finding active incident for client:', error || 'No active incidents found');
+    if (error) {
+      console.error('❌ Error finding active incident for client:', error);
+      console.error('❌ Database error details:', { 
+        message: error?.message || 'Unknown error', 
+        code: error?.code || 'No code', 
+        hint: error?.hint || 'No hint' 
+      });
+      return false;
+    }
+    if (!data || data.length === 0) {
+      console.error('❌ No active incidents found for client:', clientId);
       return false;
     }
     

@@ -27,8 +27,13 @@ export class CravingService {
   }
 
   async initialize(): Promise<boolean> {
-    await this.initializeSession()
-    return !!this.clientId
+    try {
+      await this.initializeSession()
+      return !!this.clientId
+    } catch (error) {
+      console.error('❌ CravingService initialization failed:', error);
+      return false;
+    }
   }
   
   private async initializeSession(): Promise<void> {
@@ -65,8 +70,8 @@ export class CravingService {
             this.coachId = clientDetails.coach_id;
             return;
           }
-        } catch {
-          // Silent fallback
+        } catch (error) {
+          console.error('❌ Failed to fetch client details from stored ID:', error);
         }
       }
       
@@ -78,8 +83,8 @@ export class CravingService {
         this.clientId = data.client.id;
         this.coachId = data.client.coach_id;
       }
-    } catch {
-      // Silent error handling
+    } catch (error) {
+      console.error('❌ initializeSession failed:', error);
     }
   }
   
@@ -94,7 +99,8 @@ export class CravingService {
       } else {
         return false;
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ validateToken failed:', error);
       return false;
     }
   }
@@ -146,8 +152,8 @@ export class CravingService {
                 this.clientId = clientId;
                 this.coachId = clientDetails.coach_id;
               }
-            } catch {
-              // Silent error handling
+            } catch (error) {
+              console.error('❌ Failed to fetch client details in getSessionInfo:', error);
             }
           }
         }
@@ -164,8 +170,8 @@ export class CravingService {
               // Store the client ID for future use
               localStorage.setItem('clientId', data.client.id);
             }
-          } catch {
-            // Silent error handling
+          } catch (error) {
+            console.error('❌ Failed to fetch client from API auth:', error);
           }
         }
       }
@@ -204,29 +210,40 @@ export class CravingService {
       }
       
       return false;
-    } catch {
+    } catch (error) {
+      console.error('❌ hasActiveIncident failed:', error);
       return false;
     }
   }
 
   // Create a new craving incident
   async createCravingIncident(): Promise<string | null> {
-    // First check if there's already an active incident
-    const hasActive = await this.hasActiveIncident();
-    if (hasActive && this.incidentId) {
-      return this.incidentId;
+    try {
+      // First check if there's already an active incident
+      const hasActive = await this.hasActiveIncident();
+      if (hasActive && this.incidentId) {
+        return this.incidentId;
+      }
+      
+      // Delegate to DB module for real implementation, fallback to mock for dev
+      if (!this.clientId) {
+        const mockId = `mock-${Date.now()}`;
+        this.incidentId = mockId;
+        return mockId;
+      }
+      
+      const incidentId = await CravingDB.createCravingIncident(this.clientId);
+      if (!incidentId) {
+        console.error('❌ Failed to create craving incident for client:', this.clientId);
+        return null;
+      }
+      
+      this.incidentId = incidentId;
+      return incidentId;
+    } catch (error) {
+      console.error('❌ createCravingIncident failed:', error);
+      return null;
     }
-    
-    // Delegate to DB module for real implementation, fallback to mock for dev
-    if (!this.clientId) {
-      const mockId = `mock-${Date.now()}`;
-      this.incidentId = mockId;
-      return mockId;
-    }
-    
-    const incidentId = await CravingDB.createCravingIncident(this.clientId);
-    this.incidentId = incidentId;
-    return incidentId;
   }
 
   // Get the current incident ID
@@ -242,8 +259,21 @@ export class CravingService {
 
   // Save a message to the database
   async saveMessage(message: Omit<Message, 'id'>): Promise<Message | null> {
-    if (!this.incidentId) return null;
-    return CravingDB.saveMessage(this.incidentId, message);
+    if (!this.incidentId) {
+      console.error('❌ Cannot save message: no incident ID');
+      return null;
+    }
+    
+    try {
+      const result = await CravingDB.saveMessage(this.incidentId, message);
+      if (!result) {
+        console.error('❌ Message save returned null for incident:', this.incidentId);
+      }
+      return result;
+    } catch (error) {
+      console.error('❌ saveMessage service failed:', error);
+      return null;
+    }
   }
 
   // Get all messages for the current incident

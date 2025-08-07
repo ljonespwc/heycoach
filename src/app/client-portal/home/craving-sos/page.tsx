@@ -7,6 +7,7 @@ import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
 import { CravingService } from '@/lib/client-portal/craving-service'
 import { Message, ConversationStep, Intervention } from '@/lib/client-portal/craving-types'
 import { Option } from '@/lib/client-portal/craving-conversation'
+import { toast } from '@/components/ui/use-toast'
 
 export default function CravingSosPage() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function CravingSosPage() {
     avatarUrl: '',
     supportType: 'Craving Support'
   })
+  const [avatarLoading, setAvatarLoading] = useState(true)
 
   // We'll use addMessage for all message operations
   
@@ -38,7 +40,10 @@ export default function CravingSosPage() {
     try {
       await cravingServiceRef.current.saveMessage(message);
       setMessages(prev => [...prev, message]);
-    } catch {
+    } catch (error) {
+      console.error('❌ Failed to save message to database:', error);
+      // Show user-friendly error message
+      toast.error('Unable to save your message. Your conversation will continue, but this message may not be stored.');
       // If database save fails, still update UI
       setMessages(prev => [...prev, message]);
     }
@@ -46,6 +51,8 @@ export default function CravingSosPage() {
 
   // Keep track of initialization state
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
   
   // Initialize craving service and chat
   useEffect(() => {
@@ -54,6 +61,9 @@ export default function CravingSosPage() {
     const initChat = async () => {
       // Prevent multiple initializations
       if (isInitialized) return;
+      
+      setIsInitializing(true);
+      setInitializationError(null);
       
       try {
         // Create and initialize craving service instance
@@ -82,8 +92,8 @@ export default function CravingSosPage() {
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.set('token', token);
                 window.history.replaceState({}, '', newUrl.toString());
-              } catch {
-                // Silent error handling
+              } catch (error) {
+                console.error('❌ Failed to update PWA URL with token:', error);
               }
             }
           }
@@ -92,18 +102,15 @@ export default function CravingSosPage() {
           const initialized = await cravingServiceRef.current.initialize()
           
           if (!initialized) {
-            // Try direct fallback using stored client ID
-            const storedClientId = localStorage.getItem('clientId');
-            
-            if (storedClientId) {
-              // setClientId(storedClientId);
-            } else {
-              return; // Can't proceed without client ID
-            }
+            // Don't return early - let getSessionInfo() handle token validation
+            // This ensures the welcome messages are still created even if initial validation fails
+            console.log('Initial token validation failed, but continuing with session setup...');
+            toast.warning('Connection issues detected. Some features may not work properly.');
           }
           
           // Mark as initialized
           setIsInitialized(true);
+          setIsInitializing(false);
           
           // Fetch session information (both client and coach)
           const sessionInfo = await cravingServiceRef.current.getSessionInfo()
@@ -117,7 +124,9 @@ export default function CravingSosPage() {
                 name: sessionInfo.coach.full_name || 'Your Coach',
                 avatarUrl: sessionInfo.coach.avatar_url || '',
                 supportType: 'Craving Support'
-              })
+              });
+              // Reset avatar loading state when coach info is set
+              setAvatarLoading(!!sessionInfo.coach.avatar_url);
             } else {
               // Try direct coach lookup if we have a client ID
               const storedClientId = localStorage.getItem('clientId');
@@ -132,10 +141,12 @@ export default function CravingSosPage() {
                         avatarUrl: coachDetails.avatar_url || '',
                         supportType: 'Craving Support'
                       });
+                      // Reset avatar loading state when coach info is set
+                      setAvatarLoading(!!coachDetails.avatar_url);
                     }
                   }
-                } catch {
-                  // Silent error handling
+                } catch (error) {
+                  console.error('❌ Failed to fetch coach details from client ID:', error);
                 }
               }
             }
@@ -156,8 +167,8 @@ export default function CravingSosPage() {
                     setClientName(firstName);
                     // setClientId(storedClientId);
                   }
-                } catch {
-                  // Silent error handling
+                } catch (error) {
+                  console.error('❌ Failed to fetch client details from stored ID:', error);
                 }
               }
             }
@@ -170,6 +181,7 @@ export default function CravingSosPage() {
             // This ensures we have a fresh incident ID before saving any messages
             incidentId = await cravingServiceRef.current.createCravingIncident();
             if (!incidentId) {
+              toast.error('Unable to start your craving support session. Please try refreshing the page or contact your coach.');
               return;
             }
             setIncidentCreated(true);
@@ -202,8 +214,11 @@ export default function CravingSosPage() {
             setOptionChoices(foodSelectionRes.options || []);
           }
         }
-      } catch {
-        // Silent error handling
+      } catch (error) {
+        console.error('❌ Chat initialization failed:', error);
+        setInitializationError('Unable to initialize your support session. Please refresh the page or check your internet connection.');
+        toast.error('Unable to initialize your support session. Please refresh the page or check your internet connection.');
+        setIsInitializing(false);
       }
     }
     
@@ -255,7 +270,9 @@ export default function CravingSosPage() {
           setIsLoading(false)
         }
       })
-    } catch {
+    } catch (error) {
+      console.error('❌ handleSendMessage failed:', error);
+      toast.error('Unable to send your message. Please try again.');
       setIsLoading(false)
     }
   }
@@ -286,7 +303,9 @@ export default function CravingSosPage() {
           setIsLoading(false)
         }
       })
-    } catch {
+    } catch (error) {
+      console.error('❌ handleIntensitySelect failed:', error);
+      toast.error('Unable to record your intensity rating. Please try again.');
       setIsLoading(false);
     }
   };
@@ -319,7 +338,9 @@ export default function CravingSosPage() {
           setIsLoading(false)
         }
       })
-    } catch {
+    } catch (error) {
+      console.error('❌ handleOptionSelect failed:', error);
+      toast.error('Unable to process your selection. Please try again.');
       setIsLoading(false);
     }
   };
@@ -356,6 +377,90 @@ export default function CravingSosPage() {
     }
   }
 
+  // Show loading state during initialization
+  if (isInitializing) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
+        <div className="bg-purple-500 text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="h-12 w-12 rounded-full bg-white p-0.5">
+              <div className="h-full w-full rounded-full bg-purple-100 animate-pulse" />
+            </div>
+            <div>
+              <div className="h-4 bg-white/20 rounded animate-pulse w-24 mb-1" />
+              <div className="h-3 bg-white/20 rounded animate-pulse w-32" />
+            </div>
+          </div>
+          <button 
+            onClick={() => router.push('/client-portal/home')}
+            className="text-white text-sm px-3 py-1 rounded hover:bg-purple-600"
+          >
+            Close
+          </button>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-purple-500 bg-white">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Setting up your session...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state if initialization failed
+  if (initializationError) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
+        <div className="bg-purple-500 text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="h-12 w-12 rounded-full bg-white p-0.5 flex items-center justify-center">
+              <span className="text-red-500 text-xl">⚠️</span>
+            </div>
+            <div>
+              <div className="font-medium">Connection Error</div>
+              <div className="text-xs opacity-90">Unable to connect</div>
+            </div>
+          </div>
+          <button 
+            onClick={() => router.push('/client-portal/home')}
+            className="text-white text-sm px-3 py-1 rounded hover:bg-purple-600"
+          >
+            Close
+          </button>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="text-center max-w-md mx-auto p-6">
+            <div className="text-6xl mb-4">😔</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to Start Session</h3>
+            <p className="text-gray-600 mb-6">{initializationError}</p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => window.location.reload()}
+                className="w-full bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
+              >
+                Try Again
+              </button>
+              <button 
+                onClick={() => router.push('/client-portal/home')}
+                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Header with coach info */}
@@ -369,11 +474,22 @@ export default function CravingSosPage() {
                   alt={coach.name}
                   fill
                   sizes="48px"
-                  className="rounded-full object-cover"
+                  className={`rounded-full object-cover transition-opacity duration-200 ${
+                    avatarLoading ? 'opacity-0' : 'opacity-100'
+                  }`}
+                  onLoad={() => setAvatarLoading(false)}
                   onError={() => {
                     console.error('Failed to load coach avatar:', coach.avatarUrl)
+                    setAvatarLoading(false)
                   }}
                 />
+                {avatarLoading && (
+                  <div className="absolute inset-0 rounded-full bg-purple-100 animate-pulse flex items-center justify-center">
+                    <span className="text-lg font-semibold text-purple-400">
+                      {coach.name ? coach.name.charAt(0).toUpperCase() : 'C'}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="h-full w-full rounded-full bg-purple-100 flex items-center justify-center">
@@ -439,6 +555,40 @@ export default function CravingSosPage() {
             </div>
           </div>
         ))}
+        
+        {/* Loading indicator when processing user input */}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="h-8 w-8 rounded-full bg-purple-100 mr-2 overflow-hidden flex-shrink-0">
+              {coach.avatarUrl ? (
+                <div className="relative h-full w-full">
+                  <Image 
+                    src={coach.avatarUrl} 
+                    alt={coach.name}
+                    fill
+                    sizes="32px"
+                    className="rounded-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-full w-full rounded-full bg-purple-300 flex items-center justify-center text-white text-sm font-semibold">
+                  {coach.name ? coach.name.charAt(0).toUpperCase() : 'C'}
+                </div>
+              )}
+            </div>
+            <div className="max-w-[75%] rounded-lg px-4 py-2 bg-white border border-gray-200 text-gray-800 rounded-bl-none">
+              <div className="flex items-center space-x-1">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+                <span className="text-sm text-gray-500 ml-2">Thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
       
@@ -482,7 +632,14 @@ export default function CravingSosPage() {
                 : 'bg-purple-500 text-white hover:bg-purple-600'
             }`}
           >
-            <PaperAirplaneIcon className="h-5 w-5" />
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <PaperAirplaneIcon className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
