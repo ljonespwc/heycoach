@@ -191,16 +191,7 @@ export default function CravingSosPage() {
               return;
             }
 
-            // Initial welcome message
-            const welcomeRes = await cravingServiceRef.current.getWelcomeMessage(firstName);
-
-            // Save welcome message directly using the incident ID we just created
-            if (cravingServiceRef.current) {
-              await cravingServiceRef.current.saveMessage(welcomeRes.response);
-            }
-            setMessages(prev => [...prev, welcomeRes.response]);
-            
-            // Move to food selection step
+            // Start directly with food selection message (skip redundant welcome)
             const foodSelectionRes = await cravingServiceRef.current.getFoodSelectionMessage(firstName);
             
             // Save food selection message directly using the incident ID

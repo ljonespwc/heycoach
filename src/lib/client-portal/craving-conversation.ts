@@ -25,9 +25,11 @@ export async function getCoachResponse({
   selectedFood,
   chosenIntervention,
   coachName,
+  coachTone,
   intensity,
   location,
-  trigger
+  trigger,
+  conversationHistory
 }: {
   currentStep: ConversationStep;
   clientName: string;
@@ -35,9 +37,11 @@ export async function getCoachResponse({
   selectedFood?: string;
   chosenIntervention?: { name: string; description: string };
   coachName?: string;
+  coachTone?: string;
   intensity?: number;
   location?: string;
   trigger?: string;
+  conversationHistory?: Message[];
 }): Promise<CoachResponse> {
   const now = new Date();
   
@@ -47,12 +51,14 @@ export async function getCoachResponse({
       const aiResponse = await generateCoachResponse({
         clientName,
         coachName,
+        coachTone,
         selectedFood,
         intensity,
         location,
         trigger,
         chosenIntervention,
         interventions,
+        conversationHistory,
         currentStep: step
       });
       return aiResponse;
@@ -61,12 +67,14 @@ export async function getCoachResponse({
       return getFallbackResponse(step, {
         clientName,
         coachName,
+        coachTone,
         selectedFood,
         intensity,
         location,
         trigger,
         chosenIntervention,
         interventions,
+        conversationHistory,
         currentStep: step
       });
     }

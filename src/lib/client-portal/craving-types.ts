@@ -37,6 +37,7 @@ export interface Coach {
   full_name: string;
   avatar_url: string;
   created_at: string;
+  tone_preset?: string;
 }
 
 export interface Client {

@@ -36,14 +36,24 @@ export async function fetchClientDetails(clientId: string): Promise<Client | nul
 
 export async function getCoachInfo(coachId: string): Promise<Coach | null> {
   try {
+    // Get coach info with settings
     const coachResult = await supabase
       .from('coaches')
-      .select('*')
+      .select(`
+        *,
+        coach_settings!coach_settings_coach_id_fkey (
+          tone_preset
+        )
+      `)
       .eq('id', coachId);
     if (coachResult.data && coachResult.data.length > 0 && !coachResult.error) {
       const coachData = coachResult.data[0];
       if (!coachData.avatar_url) {
         coachData.avatar_url = 'https://randomuser.me/api/portraits/men/32.jpg';
+      }
+      // Add tone_preset to coach object if available
+      if (coachData.coach_settings && coachData.coach_settings.length > 0) {
+        coachData.tone_preset = coachData.coach_settings[0].tone_preset;
       }
       return coachData as Coach;
     }

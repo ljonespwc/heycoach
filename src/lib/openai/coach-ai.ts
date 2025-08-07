@@ -3,12 +3,14 @@ import { ConversationStep, Intervention } from '../client-portal/craving-types';
 interface CoachContext {
   clientName: string;
   coachName?: string;
+  coachTone?: string;
   selectedFood?: string;
   intensity?: number;
   location?: string;
   trigger?: string;
   chosenIntervention?: { name: string; description: string };
   interventions?: Intervention[];
+  conversationHistory?: Array<{ sender: string; text: string; timestamp: Date }>;
   currentStep: ConversationStep;
 }
 
@@ -72,6 +74,22 @@ export function getFallbackResponse(step: ConversationStep, context: CoachContex
   response = response.replace('{selectedFood}', context.selectedFood || 'that');
   response = response.replace('{interventionName}', context.chosenIntervention?.name || 'this strategy');
   response = response.replace('{interventionDescription}', context.chosenIntervention?.description || '');
+  
+  // Handle conversation history awareness for CLOSE step
+  if (step === ConversationStep.CLOSE && context.conversationHistory && context.conversationHistory.length > 0) {
+    const lastClientMessage = context.conversationHistory.slice().reverse().find(msg => msg.sender === 'client');
+    const effectivenessRating = lastClientMessage ? parseInt(lastClientMessage.text) : null;
+    
+    if (effectivenessRating !== null) {
+      if (effectivenessRating >= 7) {
+        response = `That's wonderful! A ${effectivenessRating}/10 shows the strategy really worked for you. You handled that craving like a champion!`;
+      } else if (effectivenessRating >= 4) {
+        response = `Thanks for being honest about the ${effectivenessRating}/10. Even partial success teaches us what works for you. That's progress!`;
+      } else {
+        response = `I appreciate your honesty with the ${effectivenessRating}/10 rating. Every attempt gives us valuable information about what to try next time.`;
+      }
+    }
+  }
   
   return response;
 }

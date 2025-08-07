@@ -25,6 +25,7 @@ export class CravingService {
   private location: string | null = null // Store location
   private trigger: string | null = null // Store trigger context
   private coachName: string | null = null // Store coach name for AI responses
+  private coachTone: string | null = null // Store coach communication style
   
   constructor() {
     // Constructor can't be async, initialization will be handled by the page component
@@ -184,9 +185,10 @@ export class CravingService {
     const client = this.clientId ? await this.getClientInfo() : null;
     const coach = this.coachId ? await this.getCoachInfo() : null;
     
-    // Store coach name for AI responses
+    // Store coach info for AI responses
     if (coach) {
       this.coachName = coach.full_name;
+      this.coachTone = coach.tone_preset || 'friendly';
     }
     
     return { client, coach };
@@ -295,6 +297,17 @@ export class CravingService {
   async updateIncident(updates: Partial<CravingIncident>): Promise<boolean> {
     if (!this.incidentId) return false;
     return CravingDB.updateIncident(this.incidentId, updates);
+  }
+
+  // Get conversation history for AI context
+  private async getConversationHistory(): Promise<Message[]> {
+    try {
+      if (!this.incidentId) return [];
+      return await this.getMessages();
+    } catch (error) {
+      console.error('❌ Failed to get conversation history:', error);
+      return [];
+    }
   }
 
   // Centralized message processing - handles both text input and option selection
@@ -515,6 +528,9 @@ export class CravingService {
     
     await onMessage(clientMessage);
     
+    // Get conversation history for AI context
+    const conversationHistory = await this.getConversationHistory();
+    
     // Get coach's response
     const coachRes: CoachResponse = await getCoachResponse({
       currentStep,
@@ -523,9 +539,11 @@ export class CravingService {
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
       coachName: this.coachName || undefined,
+      coachTone: this.coachTone || undefined,
       intensity: this.intensity || undefined,
       location: this.location || undefined,
       trigger: this.trigger || undefined,
+      conversationHistory,
     });
     
     // Add coach's response with a slight delay
@@ -568,6 +586,7 @@ export class CravingService {
     }) => void;
   }): void {
     setTimeout(async () => {
+      const followUpConversationHistory = await this.getConversationHistory();
       const followUpRes = await getCoachResponse({
         currentStep: ConversationStep.RATE_RESULT,
         clientName,
@@ -575,9 +594,11 @@ export class CravingService {
         selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
         chosenIntervention,
         coachName: this.coachName || undefined,
+        coachTone: this.coachTone || undefined,
         intensity: this.intensity || undefined,
         location: this.location || undefined,
         trigger: this.trigger || undefined,
+        conversationHistory: followUpConversationHistory,
       });
       
       await onMessage(followUpRes.response);
@@ -589,29 +610,35 @@ export class CravingService {
   }
 
   async getWelcomeMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
+    const welcomeConversationHistory = await this.getConversationHistory();
     const welcomeRes = await getCoachResponse({
       currentStep: ConversationStep.WELCOME,
       clientName,
       clientId: this.clientId || '',
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
       coachName: this.coachName || undefined,
+      coachTone: this.coachTone || undefined,
       intensity: this.intensity || undefined,
       location: this.location || undefined,
       trigger: this.trigger || undefined,
+      conversationHistory: welcomeConversationHistory,
     });
     return welcomeRes;
   }
 
   async getFoodSelectionMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
+    const foodSelectionConversationHistory = await this.getConversationHistory();
     const foodSelectionRes = await getCoachResponse({
       currentStep: ConversationStep.IDENTIFY_CRAVING,
       clientName,
       clientId: this.clientId || '',
       selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
       coachName: this.coachName || undefined,
+      coachTone: this.coachTone || undefined,
       intensity: this.intensity || undefined,
       location: this.location || undefined,
       trigger: this.trigger || undefined,
+      conversationHistory: foodSelectionConversationHistory,
     });
     return foodSelectionRes;
   }

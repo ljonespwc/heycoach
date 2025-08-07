@@ -9,12 +9,14 @@ const openai = new OpenAI({
 interface CoachContext {
   clientName: string;
   coachName?: string;
+  coachTone?: string;
   selectedFood?: string;
   intensity?: number;
   location?: string;
   trigger?: string;
   chosenIntervention?: { name: string; description: string };
   interventions?: Array<{ id: string; name: string; description: string }>;
+  conversationHistory?: Array<{ sender: string; text: string; timestamp: Date }>;
   currentStep: ConversationStep;
 }
 
@@ -62,58 +64,145 @@ export async function POST(request: NextRequest) {
 }
 
 function getPromptForStep(context: CoachContext) {
-  const { clientName, coachName, selectedFood, intensity, location, trigger, chosenIntervention, interventions, currentStep } = context;
+  const { clientName, coachName, coachTone, selectedFood, intensity, location, trigger, chosenIntervention, interventions, conversationHistory, currentStep } = context;
   
-  const coachPersona = `You are ${coachName || 'a supportive nutrition coach'}. You're warm, empathetic, non-judgmental, and experienced in helping people overcome cravings. You speak in a natural, conversational tone - like a friend who cares.`;
+  // Build conversation context from history
+  const conversationContext = conversationHistory && conversationHistory.length > 0 
+    ? conversationHistory.map(msg => `${msg.sender === 'client' ? clientName : (coachName || 'Coach')}: ${msg.text}`).join('\n')
+    : '';
+    
+  const hasConversationHistory = conversationContext.length > 0;
+  
+  // Define communication styles
+  const toneStyles = {
+    professional: "You maintain a professional yet caring demeanor. You're knowledgeable, structured, and speak with authority while remaining supportive.",
+    friendly: "You're warm, conversational, and approachable. You speak like a caring friend who understands their struggles.",
+    motivational: "You're energetic, inspiring, and encouraging. You focus on empowerment and building confidence.",
+    gentle: "You're soft-spoken, patient, and extra understanding. You create a safe, non-judgmental space."
+  };
+  
+  const toneStyle = toneStyles[coachTone as keyof typeof toneStyles] || toneStyles.friendly;
+  const coachPersona = `You are ${coachName || 'a supportive nutrition coach'}. ${toneStyle} You're experienced in helping people overcome cravings through evidence-based strategies.`;
+  
   
   switch (currentStep) {
     case ConversationStep.WELCOME:
-      return {
-        systemPrompt: `${coachPersona}\n\nYou're greeting a client who just reached out for help with a craving. Be warm and reassuring while setting the stage for working through this together.\n\nGuidelines:\n- Be warm and welcoming\n- Acknowledge they did the right thing by reaching out\n- Keep it under 30 words\n- Don't ask specific questions yet - just set a supportive tone`,
-        userPrompt: `Greet ${clientName} who just contacted you for craving support. Make them feel supported and ready to work through this together.`,
-        maxTokens: 50
-      };
+      const conversationSummary = hasConversationHistory ? `
 
-    case ConversationStep.IDENTIFY_CRAVING:
+Conversation so far:
+${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\nNow you need to find out what specific food they're craving. Be curious and non-judgmental.\n\nGuidelines:\n- Ask what they're craving in a warm, curious way\n- Keep it conversational and under 25 words\n- Don't make them feel bad about the craving\n- End with a clear question about the food`,
-        userPrompt: `Ask ${clientName} what specific food they're craving right now. Be warm and non-judgmental.`,
+        systemPrompt: `${coachPersona}
+
+A client has reached out for craving support. Welcome them warmly while acknowledging their courage.
+
+Style notes:
+- Use your authentic ${coachTone} communication style
+- Vary your opening - avoid starting with their name every time
+- Acknowledge their smart decision to reach out
+- Keep under 25 words
+- Set positive tone for working together
+- Avoid formulaic phrases like "I totally get that"${conversationSummary}`,
+        userPrompt: `Welcome ${clientName} who just reached out for craving support. Match your ${coachTone} style. VARY your greeting - don't always start with their name. Be authentic, not formulaic.`,
         maxTokens: 40
       };
 
-    case ConversationStep.GAUGE_INTENSITY:
+    case ConversationStep.IDENTIFY_CRAVING:
+      const cravingConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\n${clientName} is craving ${selectedFood}. Now you need to understand how intense this craving feels to them on a 1-10 scale.\n\nGuidelines:\n- Acknowledge their specific craving (${selectedFood})\n- Ask for intensity rating 1-10 in a natural way\n- Keep it under 25 words\n- Be empathetic about the intensity they might be feeling`,
-        userPrompt: `${clientName} is craving ${selectedFood}. Ask them to rate how intense this craving feels right now on a scale of 1-10. Be understanding about the intensity.`,
+        systemPrompt: `${coachPersona}
+
+Find out what specific food they're craving. Be curious without judgment.
+
+Style notes:
+- Use your ${coachTone} communication style authentically
+- Vary your question pattern - avoid repetitive phrasing
+- Create safety for honest sharing
+- Keep it under 20 words
+- Be genuinely curious, not clinical${cravingConversationSummary}`,
+        userPrompt: `Ask what they're craving using your ${coachTone} style. Use varied, natural language that feels conversational.`,
+        maxTokens: 35
+      };
+
+    case ConversationStep.GAUGE_INTENSITY:
+      const intensityConversationSummary = hasConversationHistory ? `
+
+Conversation so far:
+${conversationContext}` : '';
+      
+      return {
+        systemPrompt: `${coachPersona}
+
+They shared they're craving ${selectedFood}. Now understand the intensity (1-10 scale).
+
+Style notes:
+- Use your ${coachTone} style naturally
+- Don't repeat information already discussed in conversation
+- Vary how you ask for the 1-10 rating
+- Keep under 25 words
+- Avoid formulaic acknowledgments${intensityConversationSummary}`,
+        userPrompt: `Ask for intensity rating (1-10) using your ${coachTone} style. Be natural and conversational.`,
         maxTokens: 40
       };
 
     case ConversationStep.IDENTIFY_LOCATION:
+      const locationConversationSummary = hasConversationHistory ? `
+
+Conversation so far:
+${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\n${clientName} is craving ${selectedFood} with intensity ${intensity}/10. Understanding their location helps provide better context for the craving.\n\nGuidelines:\n- Acknowledge their craving and intensity in a supportive way\n- Ask where they are right now\n- Keep it under 25 words\n- Show understanding that environment affects cravings`,
-        userPrompt: `${clientName} rated their ${selectedFood} craving as ${intensity}/10. Ask where they are right now, acknowledging that location can influence cravings.`,
+        systemPrompt: `${coachPersona}
+
+They're craving ${selectedFood} with intensity ${intensity}/10. Understanding their location helps provide better context.
+
+Guidelines:
+- Use your ${coachTone} style
+- DON'T repeat details already in conversation (craving type, intensity)
+- Ask where they are naturally
+- Keep it under 25 words
+- Show understanding that environment affects cravings${locationConversationSummary}`,
+        userPrompt: `Ask where they are right now using your ${coachTone} style. Be conversational and natural.`,
         maxTokens: 40
       };
 
     case ConversationStep.IDENTIFY_TRIGGER:
+      const triggerConversationSummary = hasConversationHistory ? `
+
+Conversation so far:
+${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\n${clientName} is at ${location} craving ${selectedFood} (intensity ${intensity}/10). Help them identify what might have triggered this craving.\n\nGuidelines:\n- Reference their situation (${selectedFood} craving at ${location})\n- Ask about possible triggers in an understanding way\n- Keep it under 30 words\n- Be empathetic - triggers are often emotional or situational`,
-        userPrompt: `${clientName} is at ${location} with a ${intensity}/10 craving for ${selectedFood}. Gently ask what might have triggered this craving, showing understanding.`,
+        systemPrompt: `${coachPersona}
+
+They're at ${location} craving ${selectedFood} (intensity ${intensity}/10). Help them identify what might have triggered this craving.
+
+Guidelines:
+- Use your ${coachTone} style
+- Don't repeat details already discussed in conversation
+- Ask about possible triggers in an understanding way
+- Keep it under 30 words
+- Be empathetic - triggers are often emotional or situational${triggerConversationSummary}`,
+        userPrompt: `Ask what might have triggered this craving using your ${coachTone} style. Be understanding and conversational.`,
         maxTokens: 50
       };
 
     case ConversationStep.SUGGEST_TACTIC:
       const intervention = interventions?.[0];
+      const tacticConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\n${clientName} is craving ${selectedFood} (${intensity}/10) at ${location}, triggered by ${trigger}. Time to suggest a helpful strategy.\n\nGuidelines:\n- Show empathy for their situation\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Frame it as an alternative to the craving\n- Keep it under 50 words\n- Be encouraging and specific about the intervention`,
-        userPrompt: `${clientName} is craving ${selectedFood} at ${location} due to ${trigger}. Suggest they try "${intervention?.name}" (${intervention?.description}) instead of reaching for the ${selectedFood}. Be empathetic and encouraging.`,
+        systemPrompt: `${coachPersona}\n\nThey're craving ${selectedFood} (${intensity}/10) at ${location}, triggered by ${trigger}. Time to suggest a helpful strategy.\n\nGuidelines:\n- Use your ${coachTone} style\n\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Frame it as an alternative to the craving\n- Keep it under 50 words\n- Be encouraging and specific about the intervention${tacticConversationSummary}`,
+        userPrompt: `Suggest they try "${intervention?.name}" (${intervention?.description}) using your ${coachTone} style. Be empathetic and encouraging.`,
         maxTokens: 80
       };
 
     case ConversationStep.CONSENT_CHECK:
       return {
-        systemPrompt: `${coachPersona}\n\nYou've just suggested a strategy and now need to get confirmation that ${clientName} is ready to try it.\n\nGuidelines:\n- Ask for their readiness in a supportive way\n- Keep it under 20 words\n- Be encouraging about their willingness to try`,
-        userPrompt: `Ask ${clientName} if they're ready to try the suggested strategy. Be supportive and encouraging.`,
+        systemPrompt: `${coachPersona}\n\nYou've just suggested a strategy and now need to get confirmation that they're ready to try it.\n\nGuidelines:\n- Ask for their readiness in a supportive way\n- Keep it under 20 words\n- Be encouraging about their willingness to try`,
+        userPrompt: `Ask if they're ready to try the suggested strategy. Be supportive and encouraging.`,
         maxTokens: 30
       };
 
@@ -123,36 +212,44 @@ function getPromptForStep(context: CoachContext) {
       if (isSecondOption) {
         const secondIntervention = interventions?.[0];
         return {
-          systemPrompt: `${coachPersona}\n\n${clientName} wanted a different approach, so now you're suggesting "${secondIntervention?.name}".\n\nGuidelines:\n- Acknowledge they wanted another option\n- Suggest the new intervention naturally\n- Keep it under 40 words\n- Be supportive of their choice to try something different`,
-          userPrompt: `Suggest a different approach for ${clientName}: "${secondIntervention?.name}" - ${secondIntervention?.description}. Be supportive that they wanted another option.`,
+          systemPrompt: `${coachPersona}\n\nThey wanted a different approach, so now you're suggesting "${secondIntervention?.name}".\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Acknowledge they wanted another option positively\n- Suggest the new intervention naturally\n- Keep it under 40 words\n- Avoid cliché phrases like "You've got this!"`,
+          userPrompt: `Suggest "${secondIntervention?.name}" (${secondIntervention?.description}) using your ${coachTone} style. They wanted another option - be supportive of their choice.`,
           maxTokens: 60
         };
       }
       
       return {
-        systemPrompt: `${coachPersona}\n\n${clientName} agreed to try "${chosenIntervention?.name}". Give them encouragement and let them know you'll check back.\n\nGuidelines:\n- Celebrate their commitment to the strategy\n- Give them confidence they can do this\n- Mention you'll check back in a bit\n- Keep it under 40 words\n- Be genuinely encouraging`,
-        userPrompt: `${clientName} committed to trying "${chosenIntervention?.name}". Encourage them, express confidence in their ability, and let them know you'll check back to see how it went.`,
+        systemPrompt: `${coachPersona}\n\nThey agreed to try "${chosenIntervention?.name}". Give them encouragement and let them know you'll check back.\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Celebrate their commitment genuinely\n- Build their confidence naturally\n- Mention you'll check back soon\n- Keep it under 40 words\n- Avoid overused phrases like "You've got this!" or "I believe in you!"`,
+        userPrompt: `They will try "${chosenIntervention?.name}". Use your ${coachTone} style to encourage them authentically and mention you'll check back. Avoid cliché motivational phrases.`,
         maxTokens: 60
       };
 
     case ConversationStep.RATE_RESULT:
+      const rateResultConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\nIt's time to check back with ${clientName} about how their strategy "${chosenIntervention?.name}" worked for their ${selectedFood} craving.\n\nGuidelines:\n- Reference the specific strategy they tried\n- Ask for effectiveness rating 1-10\n- Keep it under 30 words\n- Be curious and supportive about the results`,
-        userPrompt: `Check back with ${clientName} about how "${chosenIntervention?.name}" worked for managing their ${selectedFood} craving. Ask them to rate its effectiveness 1-10.`,
+        systemPrompt: `${coachPersona}\n\nCheck back about how "${chosenIntervention?.name}" worked for their ${selectedFood} craving.\n\nGuidelines:\n- Use your ${coachTone} communication style\n\n- Don't repeat details already discussed\n- Reference the specific strategy they tried\n- Ask for effectiveness rating 1-10 in varied ways\n- Keep it under 30 words\n- Be curious and supportive regardless of results\n- Vary your check-in approach${rateResultConversationSummary}`,
+        userPrompt: `Check back about "${chosenIntervention?.name}" effectiveness using your ${coachTone} style. Ask for a 1-10 rating. Be natural and supportive.`,
         maxTokens: 50
       };
 
     case ConversationStep.CLOSE:
+      // Extract the effectiveness rating from the conversation history
+      const lastClientMessage = conversationHistory?.slice().reverse().find(msg => msg.sender === 'client');
+      const effectivenessRating = lastClientMessage ? parseInt(lastClientMessage.text) : null;
+      
+      const closeConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
       return {
-        systemPrompt: `${coachPersona}\n\nTime to wrap up the session with ${clientName}. They just shared how effective the strategy was.\n\nGuidelines:\n- Acknowledge their effort and courage in working through the craving\n- Celebrate the learning experience regardless of the outcome\n- Keep it under 35 words\n- End on an empowering, positive note`,
-        userPrompt: `Close the session with ${clientName}. Acknowledge their courage in working through the craving and celebrate their effort. Be empowering and positive.`,
+        systemPrompt: `${coachPersona}\n\nWrap up the session. They just rated the effectiveness as ${effectivenessRating || 'unknown'}/10.\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- SPECIFICALLY acknowledge their ${effectivenessRating}/10 rating\n- If high rating (7+): Celebrate the success\n- If medium rating (4-6): Acknowledge the partial help and learning\n- If low rating (1-3): Validate their honesty and emphasize the learning\n- Keep it under 35 words\n- Be genuine, not formulaic${closeConversationSummary}`,
+        userPrompt: `They rated the strategy effectiveness as ${effectivenessRating}/10. Using your ${coachTone} style, acknowledge this specific rating and close the session appropriately. Be authentic about the result.`,
         maxTokens: 60
       };
 
     default:
       return {
         systemPrompt: `${coachPersona}\n\nProvide a supportive closing message.`,
-        userPrompt: `Give ${clientName} a brief supportive message about reaching out if they need help again.`,
+        userPrompt: `Give a brief supportive message about reaching out if they need help again.`,
         maxTokens: 30
       };
   }
