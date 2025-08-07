@@ -1,7 +1,8 @@
 // Conversation flow logic for Craving SOS
 import { ConversationStep, Message, Intervention } from './craving-types';
-import { getRandomClientInterventions, updateIncidentByClientId } from './craving-db';
+import { getActiveClientInterventions, updateIncidentByClientId } from './craving-db';
 import { generateCoachResponse, getFallbackResponse } from '../openai/coach-ai';
+import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
 
 export interface Option {
   emoji?: string;
@@ -29,7 +30,9 @@ export async function getCoachResponse({
   intensity,
   location,
   trigger,
-  conversationHistory
+  conversationHistory,
+  primaryIntervention,
+  secondaryIntervention
 }: {
   currentStep: ConversationStep;
   clientName: string;
@@ -42,6 +45,8 @@ export async function getCoachResponse({
   location?: string;
   trigger?: string;
   conversationHistory?: Message[];
+  primaryIntervention?: Intervention;
+  secondaryIntervention?: Intervention;
 }): Promise<CoachResponse> {
   const now = new Date();
   
@@ -161,13 +166,9 @@ export async function getCoachResponse({
         ]
       };
     case ConversationStep.SUGGEST_TACTIC:
-      // Fetch interventions for the client
-      const interventions = await getRandomClientInterventions(clientId, 1); // Just get one intervention initially
-      
-      if (interventions.length === 0) {
-        // Fallback if no interventions found
-        const fallbackInterventions = [{ id: '', name: 'Deep breathing and water', description: 'Take 3-5 deep breaths and drink a full glass of water slowly.' }];
-        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, fallbackInterventions);
+      // Use the pre-selected primary intervention from smart selection
+      if (primaryIntervention) {
+        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [primaryIntervention]);
         return {
           response: {
             id: `coach-${now.getTime()}`,
@@ -181,27 +182,78 @@ export async function getCoachResponse({
             { emoji: '👍', name: "Yes, I'll try it" },
             { emoji: '💡', name: "Another idea" }
           ],
-          interventions: fallbackInterventions
+          interventions: [primaryIntervention]
         };
       }
       
-      // We have an intervention to suggest
-      const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, interventions);
-      return {
-        response: {
-          id: `coach-${now.getTime()}`,
-          sender: 'coach',
-          text: tacticText,
-          type: 'tactic_response',
-          timestamp: now,
-        },
-        nextStep: ConversationStep.ENCOURAGEMENT,
-        options: [
-          { emoji: '👍', name: "Yes, I'll try it" },
-          { emoji: '💡', name: "Another idea" }
-        ],
-        interventions
-      };
+      // Fallback to old behavior if no smart selection available (shouldn't happen)
+      const allInterventions = await getActiveClientInterventions(clientId, 25);
+      
+      if (allInterventions.length === 0) {
+        // No interventions available - return error message
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: "I don't have any interventions configured for you yet. Please contact your coach to set up your personalized strategies.",
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.CLOSE
+        };
+      }
+
+      // Use smart intervention selection
+      const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
+      
+      try {
+        const smartSelection = await selectSmartInterventions({
+          clientName,
+          cravingType: selectedFood || 'food',
+          intensity: intensity || 5,
+          location: location || 'unknown',
+          trigger: trigger || 'unknown',
+          timeOfDay,
+          dayOfWeek,
+          availableInterventions: allInterventions
+        });
+
+        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [smartSelection.primaryIntervention]);
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: tacticText,
+            type: 'tactic_response',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.ENCOURAGEMENT,
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" },
+            { emoji: '💡', name: "Another idea" }
+          ],
+          interventions: [smartSelection.primaryIntervention]
+        };
+      } catch (error) {
+        console.error('❌ Smart intervention selection failed, using first available:', error);
+        // Fallback to first intervention if smart selection fails
+        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [allInterventions[0]]);
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: tacticText,
+            type: 'tactic_response',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.ENCOURAGEMENT,
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" },
+            { emoji: '💡', name: "Another idea" }
+          ],
+          interventions: [allInterventions[0]]
+        };
+      }
     case ConversationStep.ENCOURAGEMENT:
       // Check if this is a response to "Another idea" or if we're accepting a second intervention
       console.log('ENCOURAGEMENT step with chosenIntervention:', chosenIntervention);
@@ -229,31 +281,48 @@ export async function getCoachResponse({
         };
       } else if (isSecondOption) {
         console.log('Getting second intervention option for client:', clientId);
-        // Get a second intervention option
-        const secondIntervention = await getRandomClientInterventions(clientId, 1);
         
-        if (secondIntervention.length === 0) {
-          // Fallback if no interventions found
-          const fallbackSecondInterventions = [{ id: '', name: 'Physical activity', description: 'Take a short walk or do some gentle stretching to redirect your attention and energy.' }];
-          const secondOptionText = await getResponseText(ConversationStep.ENCOURAGEMENT, fallbackSecondInterventions);
+        // Use the pre-selected secondary intervention from smart selection
+        if (secondaryIntervention) {
+          const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [secondaryIntervention]);
           return {
             response: {
               id: `coach-${now.getTime()}`,
               sender: 'coach',
-              text: secondOptionText,
+              text: secondInterventionText,
               type: 'text',
               timestamp: now,
             },
-            nextStep: ConversationStep.RATE_RESULT,
+            nextStep: ConversationStep.ENCOURAGEMENT,
             options: [
               { emoji: '👍', name: "Yes, I'll try it" }
             ],
-            interventions: fallbackSecondInterventions
+            interventions: [secondaryIntervention]
+          };
+        }
+        
+        // Fallback - get all interventions and pick a different one
+        const allInterventions = await getActiveClientInterventions(clientId, 25);
+        const filteredInterventions = allInterventions.filter(i => 
+          !primaryIntervention || i.id !== primaryIntervention.id
+        );
+        
+        if (filteredInterventions.length === 0) {
+          // No more interventions available
+          return {
+            response: {
+              id: `coach-${now.getTime()}`,
+              sender: 'coach',
+              text: "I don't have any other interventions to suggest right now. Please contact your coach for more strategies.",
+              type: 'text',
+              timestamp: now,
+            },
+            nextStep: ConversationStep.CLOSE
           };
         }
         
         // We have a second intervention to suggest
-        const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, secondIntervention);
+        const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [filteredInterventions[0]]);
         return {
           response: {
             id: `coach-${now.getTime()}`,
@@ -262,11 +331,11 @@ export async function getCoachResponse({
             type: 'text',
             timestamp: now,
           },
-          nextStep: ConversationStep.ENCOURAGEMENT, // Use ENCOURAGEMENT instead of FOLLOWUP
+          nextStep: ConversationStep.ENCOURAGEMENT,
           options: [
             { emoji: '👍', name: "Yes, I'll try it" }
           ],
-          interventions: secondIntervention
+          interventions: [filteredInterventions[0]]
         };
       }
       

@@ -91,19 +91,27 @@ The craving support follows a structured conversation with AI-powered natural re
 9. **CLOSE**: Session completion
 
 ### AI Integration (GPT-4.1-mini)
-**Enhanced Coach Responses**: The conversation flow now uses OpenAI GPT-4.1-mini to generate natural, contextual coach responses while maintaining the structured data collection process.
+**Enhanced Coach Responses**: The conversation flow uses OpenAI GPT-4.1-mini to generate natural, contextual coach responses while maintaining the structured data collection process.
+
+**Smart Intervention Selection**: New AI-powered system intelligently selects primary and secondary interventions based on comprehensive client context.
 
 **Key Features:**
 - **Contextual Awareness**: AI responses reference client name, specific food craving, intensity level, location, and trigger
 - **Natural Language**: Conversations feel more human-like while preserving therapeutic structure
+- **Smart Interventions**: LLM selects most effective interventions based on craving type, intensity, location, trigger, time of day, and client's available strategies
+- **Dual Selection**: AI picks both primary and secondary interventions simultaneously, ensuring no duplication
+- **Intelligence Factors**: Considers intervention categories, complementary strategies, time-based appropriateness, and contextual effectiveness
 - **Robust Fallbacks**: Automatic fallback to hardcoded responses if AI service fails
-- **Cost Efficient**: Using GPT-4.1-mini (~$0.0005 per conversation) for optimal cost-performance balance
+- **Cost Efficient**: Using GPT-4.1-mini (~$0.0005 per conversation + ~$0.002 per smart selection) for optimal cost-performance balance
 - **Personalized Tone**: AI adopts the coach's persona and maintains warm, non-judgmental communication
 
 **Implementation:**
 - `src/lib/openai/coach-ai.ts`: OpenAI service with step-specific prompts
+- `src/app/api/ai/smart-interventions/route.ts`: Smart intervention selection endpoint using GPT-4.1-mini
+- `src/lib/client-portal/smart-interventions.ts`: Client-side functions for intelligent intervention selection
 - Context tracking across conversation steps for personalized responses
 - Error handling with graceful degradation to standard responses
+- Smart selection triggered automatically when all context is collected (food, intensity, location, trigger)
 
 ## Development Commands
 

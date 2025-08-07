@@ -10,6 +10,7 @@ import {
 } from './craving-types';
 import * as CravingDB from './craving-db';
 import { getCoachResponse, type CoachResponse, type Option } from './craving-conversation';
+import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
 
 export type { Message } from './craving-types';
 export { ConversationStep } from './craving-types';
@@ -26,6 +27,8 @@ export class CravingService {
   private trigger: string | null = null // Store trigger context
   private coachName: string | null = null // Store coach name for AI responses
   private coachTone: string | null = null // Store coach communication style
+  private primaryIntervention: Intervention | null = null // Store smart-selected primary intervention
+  private secondaryIntervention: Intervention | null = null // Store smart-selected secondary intervention
   
   constructor() {
     // Constructor can't be async, initialization will be handled by the page component
@@ -310,6 +313,48 @@ export class CravingService {
     }
   }
 
+  // Perform smart intervention selection when we have enough context
+  private async performSmartInterventionSelection(): Promise<void> {
+    if (!this.clientId || !this.selectedFood || !this.intensity || !this.location || !this.trigger) {
+      console.log('❌ Missing context for smart intervention selection');
+      return;
+    }
+
+    try {
+      const allInterventions = await CravingDB.getActiveClientInterventions(this.clientId, 25);
+      
+      if (allInterventions.length === 0) {
+        console.log('❌ No interventions available for smart selection');
+        return;
+      }
+
+      const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
+      
+      const smartSelection = await selectSmartInterventions({
+        clientName: this.coachName || 'Client', // Use coach name as backup
+        cravingType: this.selectedFood,
+        intensity: this.intensity,
+        location: this.location,
+        trigger: this.trigger,
+        timeOfDay,
+        dayOfWeek,
+        availableInterventions: allInterventions
+      });
+
+      this.primaryIntervention = smartSelection.primaryIntervention;
+      this.secondaryIntervention = smartSelection.secondaryIntervention;
+      
+      console.log('✅ Smart intervention selection completed:', {
+        primary: smartSelection.primaryIntervention.name,
+        secondary: smartSelection.secondaryIntervention.name,
+        reasoning: smartSelection.reasoning
+      });
+
+    } catch (error) {
+      console.error('❌ Smart intervention selection failed:', error);
+    }
+  }
+
   // Centralized message processing - handles both text input and option selection
   async processUserInput({
     input,
@@ -377,6 +422,8 @@ export class CravingService {
           // Entering SUGGEST_TACTIC: save trigger context from IDENTIFY_TRIGGER
           this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
+          // Now we have all context - perform smart intervention selection
+          await this.performSmartInterventionSelection();
           break;
 
         case ConversationStep.RATE_RESULT:
@@ -466,6 +513,8 @@ export class CravingService {
           messageType = 'option_selection';
           this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
+          // Now we have all context - perform smart intervention selection
+          await this.performSmartInterventionSelection();
           break;
           
         case ConversationStep.ENCOURAGEMENT:
@@ -544,6 +593,8 @@ export class CravingService {
       location: this.location || undefined,
       trigger: this.trigger || undefined,
       conversationHistory,
+      primaryIntervention: this.primaryIntervention || undefined,
+      secondaryIntervention: this.secondaryIntervention || undefined,
     });
     
     // Add coach's response with a slight delay
@@ -599,6 +650,8 @@ export class CravingService {
         location: this.location || undefined,
         trigger: this.trigger || undefined,
         conversationHistory: followUpConversationHistory,
+        primaryIntervention: this.primaryIntervention || undefined,
+        secondaryIntervention: this.secondaryIntervention || undefined,
       });
       
       await onMessage(followUpRes.response);
@@ -622,6 +675,8 @@ export class CravingService {
       location: this.location || undefined,
       trigger: this.trigger || undefined,
       conversationHistory: welcomeConversationHistory,
+      primaryIntervention: this.primaryIntervention || undefined,
+      secondaryIntervention: this.secondaryIntervention || undefined,
     });
     return welcomeRes;
   }
@@ -639,6 +694,8 @@ export class CravingService {
       location: this.location || undefined,
       trigger: this.trigger || undefined,
       conversationHistory: foodSelectionConversationHistory,
+      primaryIntervention: this.primaryIntervention || undefined,
+      secondaryIntervention: this.secondaryIntervention || undefined,
     });
     return foodSelectionRes;
   }

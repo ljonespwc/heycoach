@@ -113,31 +113,12 @@ import { Message, MessageSender, MessageType } from './craving-types';
 import { Intervention } from './craving-types';
 
 // Fetch active client interventions with details from craving_interventions table
-export async function getActiveClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
+export async function getActiveClientInterventions(clientId: string, count: number = 25): Promise<Intervention[]> {
   if (!clientId) {
     return [];
   }
   
   try {
-    // If we don't have any client interventions, use default fallback interventions
-    const fallbackInterventions: Intervention[] = [
-      {
-        id: 'fallback-1',
-        name: 'Deep breathing',
-        description: 'Take 5 deep breaths, inhaling for 4 counts and exhaling for 6 counts.'
-      },
-      {
-        id: 'fallback-2',
-        name: 'Drink water',
-        description: 'Drink a full glass of water slowly, focusing on the sensation.'
-      },
-      {
-        id: 'fallback-3',
-        name: 'Take a walk',
-        description: 'Take a short 5-minute walk to redirect your attention.'
-      }
-    ];
-    
     // Step 1: Get active client interventions
     const { data: clientInterventions, error: clientError } = await supabase
       .from('client_interventions')
@@ -149,70 +130,57 @@ export async function getActiveClientInterventions(clientId: string, count: numb
     
     if (clientError) {
       console.error('Error fetching client interventions:', clientError);
-      console.log('Using fallback interventions due to error');
-      return fallbackInterventions;
+      return [];
     }
     
     if (!clientInterventions || clientInterventions.length === 0) {
-      console.log('No client interventions found, using fallback interventions');
-      return fallbackInterventions;
+      console.log('No client interventions found');
+      return [];
     }
     
     // Extract intervention IDs
     const interventionIds = clientInterventions.map(item => item.intervention_id);
     console.log('Extracted intervention IDs:', interventionIds);
     
-    // Step 2: Get intervention details
+    // Step 2: Get intervention details including category
     console.log('Querying craving_interventions table...');
     const { data: interventionDetails, error: detailsError } = await supabase
       .from('craving_interventions')
-      .select('id, name, description')
+      .select('id, name, description, category')
       .in('id', interventionIds);
     
     console.log('Intervention details query result:', { interventionDetails, detailsError });
     
     if (detailsError) {
       console.error('Error fetching intervention details:', detailsError);
-      console.log('Using fallback interventions due to error');
-      return fallbackInterventions;
+      return [];
     }
     
     if (!interventionDetails || interventionDetails.length === 0) {
-      console.log('No intervention details found, using fallback interventions');
-      return fallbackInterventions;
+      console.log('No intervention details found');
+      return [];
     }
     
     // Map the intervention details to the expected structure
     const result = interventionDetails.map(item => ({
       id: item.id,
       name: item.name,
-      description: item.description
+      description: item.description,
+      category: item.category
     }));
     
     console.log('Successfully fetched interventions:', result);
     return result;
   } catch (e) {
     console.error('Exception fetching active interventions:', e);
-    console.log('Using fallback interventions due to exception');
-    return [
-      {
-        id: 'fallback-1',
-        name: 'Deep breathing',
-        description: 'Take 5 deep breaths, inhaling for 4 counts and exhaling for 6 counts.'
-      },
-      {
-        id: 'fallback-2',
-        name: 'Drink water',
-        description: 'Drink a full glass of water slowly, focusing on the sensation.'
-      }
-    ];
+    return [];
   }
 }
 
 // Fetch random interventions for a client
 export async function getRandomClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
   console.log(`Getting ${count} random interventions for client:`, clientId);
-  const interventions = await getActiveClientInterventions(clientId, 10); // Get more than we need so we can shuffle
+  const interventions = await getActiveClientInterventions(clientId, 25); // Get up to 25 interventions
   
   if (interventions.length === 0) {
     console.log('No interventions found, returning empty array');
