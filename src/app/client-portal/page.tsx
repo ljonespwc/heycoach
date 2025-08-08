@@ -75,9 +75,9 @@ export default function ClientPortalPage() {
   }, [token, router])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       <ClientAccessForm />
       <InstallPrompt />
-    </div>
+    </>
   )
 }

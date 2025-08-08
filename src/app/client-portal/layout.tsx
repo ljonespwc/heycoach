@@ -40,7 +40,9 @@ export default function ClientLayout({
       <Script src="/pwa-register.js" strategy="afterInteractive" />
       
       <Suspense fallback={<div>Loading...</div>}>
-        <main>{children}</main>
+        <main className="mx-auto max-w-md px-4 py-8">
+          {children}
+        </main>
       </Suspense>
     </div>
   )

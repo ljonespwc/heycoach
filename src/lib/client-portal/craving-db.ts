@@ -120,6 +120,7 @@ export async function getActiveClientInterventions(clientId: string, count: numb
   
   try {
     // Step 1: Get active client interventions
+    console.log('🔍 Querying client_interventions table for clientId:', clientId);
     const { data: clientInterventions, error: clientError } = await supabase
       .from('client_interventions')
       .select('intervention_id')
