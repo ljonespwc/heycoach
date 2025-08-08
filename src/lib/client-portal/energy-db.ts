@@ -48,19 +48,18 @@ export async function createMovementIncident(clientId: string | null): Promise<s
 }
 
 // Fetch active client energy interventions with details from energy_interventions table
-export async function getActiveClientInterventions(clientId: string, interventionType: 'craving' | 'energy', count: number = 25): Promise<Intervention[]> {
+export async function getActiveEnergyInterventions(clientId: string, count: number = 25): Promise<Intervention[]> {
   if (!clientId) {
     return [];
   }
   
   try {
     // Step 1: Get active client interventions
-    console.log(`🔍 Querying client_interventions table for clientId: ${clientId}, type: ${interventionType}`);
     const { data: clientInterventions, error: clientError } = await supabase
       .from('client_interventions')
       .select('intervention_id')
       .eq('client_id', clientId)
-      .eq('intervention_type', interventionType)
+      .eq('intervention_type', 'energy')
       .eq('active', true)
       .limit(count);
     
@@ -70,23 +69,17 @@ export async function getActiveClientInterventions(clientId: string, interventio
     }
     
     if (!clientInterventions || clientInterventions.length === 0) {
-      console.log('No client interventions found');
       return [];
     }
     
     // Extract intervention IDs
     const interventionIds = clientInterventions.map(item => item.intervention_id);
-    console.log('Extracted intervention IDs:', interventionIds);
     
-    // Step 2: Get intervention details including category from appropriate table
-    const tableName = interventionType === 'craving' ? 'craving_interventions' : 'energy_interventions';
-    console.log(`Querying ${tableName} table...`);
+    // Step 2: Get intervention details from energy_interventions table
     const { data: interventionDetails, error: detailsError } = await supabase
-      .from(tableName)
+      .from('energy_interventions')
       .select('id, name, description, category')
       .in('id', interventionIds);
-    
-    console.log('Intervention details query result:', { interventionDetails, detailsError });
     
     if (detailsError) {
       console.error('Error fetching intervention details:', detailsError);
@@ -94,7 +87,6 @@ export async function getActiveClientInterventions(clientId: string, interventio
     }
     
     if (!interventionDetails || interventionDetails.length === 0) {
-      console.log('No intervention details found');
       return [];
     }
     
@@ -106,7 +98,6 @@ export async function getActiveClientInterventions(clientId: string, interventio
       category: item.category
     }));
     
-    console.log('Successfully fetched interventions:', result);
     return result;
   } catch (e) {
     console.error('Exception fetching active interventions:', e);
@@ -117,7 +108,7 @@ export async function getActiveClientInterventions(clientId: string, interventio
 // Fetch random energy interventions for a client
 export async function getRandomClientInterventions(clientId: string, count: number = 3): Promise<Intervention[]> {
   console.log(`Getting ${count} random energy interventions for client:`, clientId);
-  const interventions = await getActiveClientInterventions(clientId, 'energy', 25); // Get up to 25 interventions
+  const interventions = await getActiveEnergyInterventions(clientId, 25); // Get up to 25 interventions
   
   if (interventions.length === 0) {
     console.log('No interventions found, returning empty array');

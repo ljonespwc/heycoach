@@ -1,6 +1,6 @@
 // Conversation flow logic for Energy Boost
 import { ConversationStep, Message, Intervention } from './craving-types';
-import { getActiveClientInterventions, updateMovementIncidentByClientId } from './energy-db';
+import { getActiveEnergyInterventions, updateMovementIncidentByClientId } from './energy-db';
 import { generateCoachResponse } from '../openai/coach-ai';
 import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
 
@@ -188,7 +188,7 @@ export async function getEnergyResponse({
       // Fallback to getting all client interventions if no smart selection
       try {
         console.log('Getting all client interventions for smart selection...');
-        const allInterventions = await getActiveClientInterventions(clientId, 'energy');
+        const allInterventions = await getActiveEnergyInterventions(clientId);
 
         if (allInterventions.length > 0) {
           // Perform smart selection using current context

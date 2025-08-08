@@ -308,7 +308,7 @@ export class EnergyService {
     }
 
     try {
-      const allInterventions = await EnergyDB.getActiveClientInterventions(this.clientId, 'energy', 25);
+      const allInterventions = await EnergyDB.getActiveEnergyInterventions(this.clientId, 25);
       
       if (allInterventions.length === 0) {
         console.log('❌ No energy interventions available for smart selection');
