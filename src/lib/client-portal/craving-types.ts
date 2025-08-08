@@ -33,6 +33,23 @@ export interface CravingIncident {
   interventionId?: string;
 }
 
+export interface MovementIncident {
+  id: string;
+  clientId: string;
+  blockerType: string;
+  energyLevel?: number;
+  activityCompleted?: boolean;
+  activityType?: string;
+  durationMinutes?: number;
+  createdAt: Date;
+  resolvedAt?: Date;
+  interventionId?: string;
+  notifyCoach?: boolean;
+  dayOfWeek?: number;
+  timeOfDay?: string;
+  postEnergyLevel?: number;
+}
+
 export interface Coach {
   id: string;
   full_name: string;
@@ -61,4 +78,8 @@ export enum ConversationStep {
   ENCOURAGEMENT = 'encouragement',
   RATE_RESULT = 'rate_result',
   CLOSE = 'close',
+  // Energy Boost specific steps
+  IDENTIFY_BLOCKER = 'identify_blocker',
+  GAUGE_ENERGY = 'gauge_energy',
+  IDENTIFY_APPROACH = 'identify_approach',
 }

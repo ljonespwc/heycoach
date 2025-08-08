@@ -2,12 +2,13 @@ import { Intervention } from './craving-types';
 
 interface SmartInterventionContext {
   clientName: string;
-  cravingType: string;
-  intensity: number;
+  cravingType: string; // For craving: food type, for energy: blocker type
+  intensity: number; // For craving: craving intensity, for energy: energy level
   location: string;
-  trigger: string;
+  trigger: string; // For craving: trigger context, for energy: activity goal/preference
   timeOfDay: string;
   dayOfWeek: string;
+  interventionType?: 'craving' | 'energy'; // New field to distinguish context type
   availableInterventions: Intervention[];
   previousEffectiveness?: Array<{
     interventionId: string;

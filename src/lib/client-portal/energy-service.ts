@@ -5,26 +5,26 @@ import {
   Client,
   ConversationStep,
   Intervention,
-  CravingIncident,
+  MovementIncident,
   MessageType
 } from './craving-types';
-import * as CravingDB from './craving-db';
-import { getCoachResponse, type CoachResponse, type Option } from './craving-conversation';
+import * as EnergyDB from './energy-db';
+import { getEnergyResponse, type EnergyResponse, type Option } from './energy-conversation';
 import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
 
 export type { Message } from './craving-types';
 export { ConversationStep } from './craving-types';
 
-export class CravingService {
+export class EnergyService {
   private supabase = createClient()
   private clientId: string | null = null
   private coachId: string | null = null
   private incidentId: string | null = null
   private currentStep: ConversationStep = ConversationStep.WELCOME
-  private selectedFood: string | null = null // Store selected food across conversation steps
-  private intensity: number | null = null // Store intensity rating
+  private selectedBlocker: string | null = null // Store selected blocker across conversation steps
+  private energyLevel: number | null = null // Store energy level rating
   private location: string | null = null // Store location
-  private trigger: string | null = null // Store trigger context
+  private approach: string | null = null // Store preferred approach to getting unstuck
   private coachName: string | null = null // Store coach name for AI responses
   private coachTone: string | null = null // Store coach communication style
   private primaryIntervention: Intervention | null = null // Store smart-selected primary intervention
@@ -39,7 +39,7 @@ export class CravingService {
       await this.initializeSession()
       return !!this.clientId
     } catch (error) {
-      console.error('❌ CravingService initialization failed:', error);
+      console.error('❌ EnergyService initialization failed:', error);
       return false;
     }
   }
@@ -72,7 +72,7 @@ export class CravingService {
       const storedClientId = localStorage.getItem('clientId');
       if (storedClientId) {
         try {
-          const clientDetails = await CravingDB.fetchClientDetails(storedClientId);
+          const clientDetails = await EnergyDB.fetchClientDetails(storedClientId);
           if (clientDetails) {
             this.clientId = storedClientId;
             this.coachId = clientDetails.coach_id;
@@ -98,7 +98,7 @@ export class CravingService {
   
   async validateToken(token: string): Promise<boolean> {
     try {
-      const { clientId, coachId } = await CravingDB.fetchClientByToken(token);
+      const { clientId, coachId } = await EnergyDB.fetchClientByToken(token);
       
       if (clientId && coachId) {
         this.clientId = clientId;
@@ -115,20 +115,20 @@ export class CravingService {
 
   async getCoachInfo(): Promise<Coach | null> {
     if (!this.coachId) return null;
-    return await CravingDB.getCoachInfo(this.coachId);
+    return await EnergyDB.getCoachInfo(this.coachId);
   }
 
   async getClientInfo(): Promise<Client | null> {
     if (!this.clientId) return null;
-    return await CravingDB.fetchClientDetails(this.clientId);
+    return await EnergyDB.fetchClientDetails(this.clientId);
   }
 
   async fetchClientDetails(clientId: string) {
-    return await CravingDB.fetchClientDetails(clientId);
+    return await EnergyDB.fetchClientDetails(clientId);
   }
 
   async getCoachDetails(coachId: string) {
-    return await CravingDB.getCoachInfo(coachId);
+    return await EnergyDB.getCoachInfo(coachId);
   }
 
   // Get both client and coach information
@@ -155,7 +155,7 @@ export class CravingService {
           if (clientId) {
             // Get client details from database using the stored ID
             try {
-              const clientDetails = await CravingDB.fetchClientDetails(clientId);
+              const clientDetails = await EnergyDB.fetchClientDetails(clientId);
               if (clientDetails) {
                 this.clientId = clientId;
                 this.coachId = clientDetails.coach_id;
@@ -202,24 +202,11 @@ export class CravingService {
     if (!this.clientId) return false;
     
     try {
-      const { data, error } = await this.supabase
-        .from('craving_incidents')
-        .select('id, created_at')
-        .eq('client_id', this.clientId)
-        .is('resolved_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-        
-      if (error || !data || data.length === 0) return false;
+      const { hasActive, incidentId } = await EnergyDB.hasActiveMovementIncident(this.clientId);
       
-      // Check if the incident was created within the last hour
-      const createdAt = new Date(data[0].created_at);
-      const oneHourAgo = new Date();
-      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-      
-      if (createdAt > oneHourAgo) {
+      if (hasActive && incidentId) {
         // If we have an active incident, store its ID
-        this.incidentId = data[0].id;
+        this.incidentId = incidentId;
         return true;
       }
       
@@ -230,8 +217,8 @@ export class CravingService {
     }
   }
 
-  // Create a new craving incident
-  async createCravingIncident(): Promise<string | null> {
+  // Create a new movement incident
+  async createMovementIncident(): Promise<string | null> {
     try {
       // First check if there's already an active incident
       const hasActive = await this.hasActiveIncident();
@@ -241,21 +228,21 @@ export class CravingService {
       
       // Delegate to DB module for real implementation, fallback to mock for dev
       if (!this.clientId) {
-        const mockId = `mock-${Date.now()}`;
+        const mockId = `mock-movement-${Date.now()}`;
         this.incidentId = mockId;
         return mockId;
       }
       
-      const incidentId = await CravingDB.createCravingIncident(this.clientId);
+      const incidentId = await EnergyDB.createMovementIncident(this.clientId);
       if (!incidentId) {
-        console.error('❌ Failed to create craving incident for client:', this.clientId);
+        console.error('❌ Failed to create movement incident for client:', this.clientId);
         return null;
       }
       
       this.incidentId = incidentId;
       return incidentId;
     } catch (error) {
-      console.error('❌ createCravingIncident failed:', error);
+      console.error('❌ createMovementIncident failed:', error);
       return null;
     }
   }
@@ -265,10 +252,10 @@ export class CravingService {
     return this.incidentId;
   }
 
-  // Update the trigger food for the current incident
-  async updateTriggerFood(food: string): Promise<boolean> {
+  // Update the blocker type for the current incident
+  async updateBlockerType(blocker: string): Promise<boolean> {
     if (!this.incidentId) return false;
-    return this.updateIncident({ triggerFood: food });
+    return this.updateIncident({ blockerType: blocker });
   }
 
   // Save a message to the database
@@ -279,7 +266,7 @@ export class CravingService {
     }
     
     try {
-      const result = await CravingDB.saveMessage(this.incidentId, message);
+      const result = await EnergyDB.saveMessage(this.incidentId, message);
       if (!result) {
         console.error('❌ Message save returned null for incident:', this.incidentId);
       }
@@ -293,13 +280,13 @@ export class CravingService {
   // Get all messages for the current incident
   async getMessages(): Promise<Message[]> {
     if (!this.incidentId) return [];
-    return CravingDB.getMessages(this.incidentId);
+    return EnergyDB.getMessages(this.incidentId);
   }
 
-  // Update the craving incident with new information
-  async updateIncident(updates: Partial<CravingIncident>): Promise<boolean> {
+  // Update the movement incident with new information
+  async updateIncident(updates: Partial<MovementIncident>): Promise<boolean> {
     if (!this.incidentId) return false;
-    return CravingDB.updateIncident(this.incidentId, updates);
+    return EnergyDB.updateMovementIncident(this.incidentId, updates);
   }
 
   // Get conversation history for AI context
@@ -315,16 +302,16 @@ export class CravingService {
 
   // Perform smart intervention selection when we have enough context
   private async performSmartInterventionSelection(): Promise<void> {
-    if (!this.clientId || !this.selectedFood || !this.intensity || !this.location || !this.trigger) {
+    if (!this.clientId || !this.selectedBlocker || !this.energyLevel || !this.location || !this.approach) {
       console.log('❌ Missing context for smart intervention selection');
       return;
     }
 
     try {
-      const allInterventions = await CravingDB.getActiveClientInterventions(this.clientId, 25);
+      const allInterventions = await EnergyDB.getActiveClientInterventions(this.clientId, 'energy', 25);
       
       if (allInterventions.length === 0) {
-        console.log('❌ No interventions available for smart selection');
+        console.log('❌ No energy interventions available for smart selection');
         return;
       }
 
@@ -332,27 +319,27 @@ export class CravingService {
       
       const smartSelection = await selectSmartInterventions({
         clientName: this.coachName || 'Client', // Use coach name as backup
-        cravingType: this.selectedFood,
-        intensity: this.intensity,
+        cravingType: this.selectedBlocker,
+        intensity: this.energyLevel,
         location: this.location,
-        trigger: this.trigger,
+        trigger: this.approach,
         timeOfDay,
         dayOfWeek,
-        interventionType: 'craving',
+        interventionType: 'energy',
         availableInterventions: allInterventions
       });
 
       this.primaryIntervention = smartSelection.primaryIntervention;
       this.secondaryIntervention = smartSelection.secondaryIntervention;
       
-      console.log('✅ Smart intervention selection completed:', {
+      console.log('✅ Smart energy intervention selection completed:', {
         primary: smartSelection.primaryIntervention.name,
         secondary: smartSelection.secondaryIntervention.name,
         reasoning: smartSelection.reasoning
       });
 
     } catch (error) {
-      console.error('❌ Smart intervention selection failed:', error);
+      console.error('❌ Smart energy intervention selection failed:', error);
     }
   }
 
@@ -387,61 +374,61 @@ export class CravingService {
     const cleanValue = input.trim();
     
     // Handle different conversation steps and message types
-    console.log('🔍 Processing input:', { input: cleanValue, currentStep, isOption });
+    console.log('🔍 Processing energy input:', { input: cleanValue, currentStep, isOption });
     
     // NOTE: Database updates happen when ENTERING a step (using input from previous step)
     // This "on-entry" pattern ensures data is captured immediately when user provides it
     if (isOption) {
-      console.log('🔍 Processing as OPTION for step:', currentStep);
+      console.log('🔍 Processing as OPTION for energy step:', currentStep);
       switch (currentStep) {
-        case ConversationStep.GAUGE_INTENSITY:
+        case ConversationStep.GAUGE_ENERGY:
           messageType = 'option_selection';
-          // Entering GAUGE_INTENSITY: save food selection from IDENTIFY_CRAVING
-          this.selectedFood = cleanValue; // Store selected food for later use
-          await this.updateIncident({ triggerFood: cleanValue });
+          // Entering GAUGE_ENERGY: save blocker selection from IDENTIFY_BLOCKER
+          this.selectedBlocker = cleanValue; // Store selected blocker for later use
+          await this.updateIncident({ blockerType: cleanValue });
           break;
           
         case ConversationStep.IDENTIFY_LOCATION:
           messageType = 'intensity_rating';
-          // Entering IDENTIFY_LOCATION: save intensity rating from GAUGE_INTENSITY
-          const intensity = parseInt(cleanValue, 10);
-          if (!isNaN(intensity)) {
-            this.intensity = intensity;
-            await this.updateIncident({ initialIntensity: intensity });
+          // Entering IDENTIFY_LOCATION: save energy level from GAUGE_ENERGY
+          const energyLevel = parseInt(cleanValue, 10);
+          if (!isNaN(energyLevel)) {
+            this.energyLevel = energyLevel;
+            await this.updateIncident({ energyLevel: energyLevel });
           }
           break;
           
-        case ConversationStep.IDENTIFY_TRIGGER:
+        case ConversationStep.IDENTIFY_APPROACH:
           messageType = 'option_selection';
-          // Entering IDENTIFY_TRIGGER: save location from IDENTIFY_LOCATION
+          // Entering IDENTIFY_APPROACH: save location from IDENTIFY_LOCATION
           this.location = cleanValue;
-          await this.updateIncident({ location: cleanValue });
+          // Note: location isn't directly stored in movement_incidents table
           break;
           
         case ConversationStep.SUGGEST_TACTIC:
           messageType = 'option_selection';
-          // Entering SUGGEST_TACTIC: save trigger context from IDENTIFY_TRIGGER
-          this.trigger = cleanValue;
-          await this.updateIncident({ context: cleanValue });
+          // Entering SUGGEST_TACTIC: save goal/preference from IDENTIFY_GOAL
+          this.approach = cleanValue;
+          // Note: goal/preference isn't directly stored in movement_incidents table
           // Now we have all context - perform smart intervention selection
           await this.performSmartInterventionSelection();
           break;
 
         case ConversationStep.RATE_RESULT:
-          console.log('🔍 RATE_RESULT option case - setting messageType to intensity_rating');
+          console.log('🔍 Energy RATE_RESULT option case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
           const resultRating = parseInt(cleanValue, 10);
-          console.log('RATE_RESULT: cleanValue =', cleanValue, 'resultRating =', resultRating);
+          console.log('Energy RATE_RESULT: cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
-            console.log('Updating incident with result_rating:', resultRating);
+            console.log('Updating movement incident with post_energy_level:', resultRating);
             await this.updateIncident({ 
-              result_rating: resultRating,
+              postEnergyLevel: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {
-            console.log('ERROR: resultRating is NaN, not updating incident');
+            console.log('ERROR: resultRating is NaN, not updating movement incident');
           }
           break;
           
@@ -463,7 +450,7 @@ export class CravingService {
                 updatedChosenIntervention = selectedIntervention;
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
-                  tacticUsed: selectedIntervention.name
+                  activityType: selectedIntervention.name
                 });
               }
             }
@@ -474,7 +461,7 @@ export class CravingService {
               updatedChosenIntervention = intervention;
               await this.updateIncident({
                 interventionId: intervention.id,
-                tacticUsed: intervention.name
+                activityType: intervention.name
               });
             }
           }
@@ -485,35 +472,28 @@ export class CravingService {
     // Handle text input for certain steps
     if (!isOption) {
       switch (currentStep) {
-        case ConversationStep.GAUGE_INTENSITY:
-          // Text input for food selection (like "hot dog")
+        case ConversationStep.GAUGE_ENERGY:
+          // Text input for blocker selection (like "too tired")
           messageType = 'option_selection';
-          this.selectedFood = cleanValue; // Store selected food for later use
-          await this.updateIncident({ triggerFood: cleanValue });
+          this.selectedBlocker = cleanValue; // Store selected blocker for later use
+          await this.updateIncident({ blockerType: cleanValue });
           break;
           
         case ConversationStep.IDENTIFY_LOCATION:
-          // Text input for intensity rating (like "8")
+          // Text input for energy level rating (like "3")
           messageType = 'intensity_rating';
-          const intensity = parseInt(cleanValue, 10);
-          if (!isNaN(intensity)) {
-            this.intensity = intensity;
-            await this.updateIncident({ initialIntensity: intensity });
+          const energyLevel = parseInt(cleanValue, 10);
+          if (!isNaN(energyLevel)) {
+            this.energyLevel = energyLevel;
+            await this.updateIncident({ energyLevel: energyLevel });
           }
           break;
           
-        case ConversationStep.IDENTIFY_TRIGGER:
-          // Text input for location (like "kitchen")
-          messageType = 'option_selection';
-          this.location = cleanValue;
-          await this.updateIncident({ location: cleanValue });
-          break;
-          
         case ConversationStep.SUGGEST_TACTIC:
-          // Text input for trigger context (like "feeling lonely")
+          // Text input for approach/preference (from IDENTIFY_APPROACH step)
           messageType = 'option_selection';
-          this.trigger = cleanValue;
-          await this.updateIncident({ context: cleanValue });
+          this.approach = cleanValue;
+          // Note: approach preference isn't directly stored in movement_incidents table
           // Now we have all context - perform smart intervention selection
           await this.performSmartInterventionSelection();
           break;
@@ -532,7 +512,7 @@ export class CravingService {
                 updatedChosenIntervention = selectedIntervention;
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
-                  tacticUsed: selectedIntervention.name
+                  activityType: selectedIntervention.name
                 });
               }
             }
@@ -547,27 +527,27 @@ export class CravingService {
           break;
           
         case ConversationStep.RATE_RESULT:
-          console.log('🔍 RATE_RESULT text case - setting messageType to intensity_rating');
+          console.log('🔍 Energy RATE_RESULT text case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
           const resultRating = parseInt(cleanValue, 10);
-          console.log('RATE_RESULT (text): cleanValue =', cleanValue, 'resultRating =', resultRating);
+          console.log('Energy RATE_RESULT (text): cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
-            console.log('Updating incident with result_rating:', resultRating);
+            console.log('Updating movement incident with post_energy_level:', resultRating);
             await this.updateIncident({ 
-              result_rating: resultRating,
+              postEnergyLevel: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {
-            console.log('ERROR: resultRating is NaN, not updating incident');
+            console.log('ERROR: resultRating is NaN, not updating movement incident');
           }
           break;
       }
     }
     
     // Create and save client message
-    console.log('🔍 Final messageType before creating message:', messageType);
+    console.log('🔍 Final messageType before creating energy message:', messageType);
     const clientMessage: Message = {
       id: `client-${Date.now()}`,
       sender: 'client',
@@ -582,17 +562,17 @@ export class CravingService {
     const conversationHistory = await this.getConversationHistory();
     
     // Get coach's response
-    const coachRes: CoachResponse = await getCoachResponse({
+    const coachRes: EnergyResponse = await getEnergyResponse({
       currentStep,
       clientName,
       clientId: this.clientId || '',
-      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+      selectedBlocker: this.selectedBlocker || undefined, // Pass stored selectedBlocker to coach response
       chosenIntervention: updatedChosenIntervention || undefined,
       coachName: this.coachName || undefined,
       coachTone: this.coachTone || undefined,
-      intensity: this.intensity || undefined,
+      energyLevel: this.energyLevel || undefined,
       location: this.location || undefined,
-      trigger: this.trigger || undefined,
+      approach: this.approach || undefined,
       conversationHistory,
       primaryIntervention: this.primaryIntervention || undefined,
       secondaryIntervention: this.secondaryIntervention || undefined,
@@ -639,17 +619,17 @@ export class CravingService {
   }): void {
     setTimeout(async () => {
       const followUpConversationHistory = await this.getConversationHistory();
-      const followUpRes = await getCoachResponse({
+      const followUpRes = await getEnergyResponse({
         currentStep: ConversationStep.RATE_RESULT,
         clientName,
         clientId: this.clientId || '',
-        selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+        selectedBlocker: this.selectedBlocker || undefined, // Pass stored selectedBlocker to coach response
         chosenIntervention,
         coachName: this.coachName || undefined,
         coachTone: this.coachTone || undefined,
-        intensity: this.intensity || undefined,
+        energyLevel: this.energyLevel || undefined,
         location: this.location || undefined,
-        trigger: this.trigger || undefined,
+        approach: this.approach || undefined,
         conversationHistory: followUpConversationHistory,
         primaryIntervention: this.primaryIntervention || undefined,
         secondaryIntervention: this.secondaryIntervention || undefined,
@@ -665,16 +645,16 @@ export class CravingService {
 
   async getWelcomeMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
     const welcomeConversationHistory = await this.getConversationHistory();
-    const welcomeRes = await getCoachResponse({
+    const welcomeRes = await getEnergyResponse({
       currentStep: ConversationStep.WELCOME,
       clientName,
       clientId: this.clientId || '',
-      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+      selectedBlocker: this.selectedBlocker || undefined, // Pass stored selectedBlocker to coach response
       coachName: this.coachName || undefined,
       coachTone: this.coachTone || undefined,
-      intensity: this.intensity || undefined,
+      energyLevel: this.energyLevel || undefined,
       location: this.location || undefined,
-      trigger: this.trigger || undefined,
+      approach: this.approach || undefined,
       conversationHistory: welcomeConversationHistory,
       primaryIntervention: this.primaryIntervention || undefined,
       secondaryIntervention: this.secondaryIntervention || undefined,
@@ -682,30 +662,31 @@ export class CravingService {
     return welcomeRes;
   }
 
-  async getFoodSelectionMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
-    const foodSelectionConversationHistory = await this.getConversationHistory();
-    const foodSelectionRes = await getCoachResponse({
-      currentStep: ConversationStep.IDENTIFY_CRAVING,
+  async getBlockerIdentificationMessage(clientName: string): Promise<{ response: Message; nextStep: ConversationStep; options?: Array<Option | string> }> {
+    const blockerConversationHistory = await this.getConversationHistory();
+    const blockerRes = await getEnergyResponse({
+      currentStep: ConversationStep.IDENTIFY_BLOCKER,
       clientName,
       clientId: this.clientId || '',
-      selectedFood: this.selectedFood || undefined, // Pass stored selectedFood to coach response
+      selectedBlocker: this.selectedBlocker || undefined, // Pass stored selectedBlocker to coach response
       coachName: this.coachName || undefined,
       coachTone: this.coachTone || undefined,
-      intensity: this.intensity || undefined,
+      energyLevel: this.energyLevel || undefined,
       location: this.location || undefined,
-      trigger: this.trigger || undefined,
-      conversationHistory: foodSelectionConversationHistory,
+      approach: this.approach || undefined,
+      conversationHistory: blockerConversationHistory,
       primaryIntervention: this.primaryIntervention || undefined,
       secondaryIntervention: this.secondaryIntervention || undefined,
     });
-    return foodSelectionRes;
+    return blockerRes;
   }
 
-  // Helper method to get the initial intensity
-  private async getInitialIntensity(): Promise<number> {
+  // Helper method to get the initial energy level
+  private async getInitialEnergyLevel(): Promise<number> {
     if (!this.incidentId) return 0;
-    return CravingDB.getInitialIntensity(this.incidentId);
+    // This would need to be implemented in energy-db.ts if needed
+    return 0;
   }
 }
 
-export default CravingService
+export default EnergyService

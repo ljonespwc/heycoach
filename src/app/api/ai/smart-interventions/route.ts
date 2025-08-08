@@ -8,12 +8,13 @@ const openai = new OpenAI({
 
 interface SmartInterventionContext {
   clientName: string;
-  cravingType: string;
-  intensity: number;
+  cravingType: string; // For craving: food type, for energy: blocker type
+  intensity: number; // For craving: craving intensity, for energy: energy level
   location: string;
-  trigger: string;
+  trigger: string; // For craving: trigger context, for energy: activity goal/preference
   timeOfDay: string;
   dayOfWeek: string;
+  interventionType?: 'craving' | 'energy'; // New field to distinguish context type
   availableInterventions: Intervention[];
   previousEffectiveness?: Array<{
     interventionId: string;
@@ -56,32 +57,46 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const systemPrompt = `You are an expert nutrition coach AI that selects the most effective interventions for clients experiencing food cravings.
+    const isEnergyContext = context.interventionType === 'energy';
+    
+    const systemPrompt = `You are an expert ${isEnergyContext ? 'fitness and wellness' : 'nutrition'} coach AI that selects the most effective interventions for clients ${isEnergyContext ? 'experiencing low energy or motivation blocks' : 'experiencing food cravings'}.
 
 Your task is to analyze the client's current situation and select:
 1. PRIMARY intervention: The best strategy for their specific context
 2. SECONDARY intervention: A different backup strategy that complements the primary choice
 
 Consider these factors when selecting interventions:
-- **Craving intensity**: Higher intensity may need more immediate/physical interventions
+${isEnergyContext ? 
+`- **Energy level**: Lower energy may need gentler, easier-to-start interventions
+- **Blocker type**: Different blockers (tired, no time, not motivated, overwhelmed) need specific approaches
+- **Activity goal**: Match intervention intensity to client's available time and desired activity level` :
+`- **Craving intensity**: Higher intensity may need more immediate/physical interventions
+- **Food type**: Different cravings may respond better to specific intervention types`}
 - **Location**: CRITICAL - Only select interventions that are feasible in the client's current environment:
-  * Home: All interventions available (bathroom access, kitchen, privacy)
-  * Restaurant: NO bathroom-based interventions (brushing teeth, mouthwash). Focus on mental strategies, breathing, stepping outside, drinking water, mindfulness
-  * Work: Limited privacy, avoid loud/obvious activities. Focus on discreet mental/breathing techniques
-  * Car: NO movement interventions. Focus on breathing, mental strategies, pulling over safely if needed
-  * Public spaces: Discreet interventions only, avoid anything requiring privacy or special equipment
-- **Trigger type**: Different triggers (stress, boredom, habit, seeing food) respond to different approaches
+  * Home: All interventions available (${isEnergyContext ? 'exercise space, equipment access' : 'bathroom access, kitchen'}, privacy)
+  * ${isEnergyContext ? 'Gym: Exercise equipment available, focus on structured activities' : 'Restaurant: NO bathroom-based interventions (brushing teeth, mouthwash)'}
+  * Work: Limited privacy and space, ${isEnergyContext ? 'desk-friendly activities, stairs, walking' : 'discreet mental/breathing techniques'}
+  * Car: ${isEnergyContext ? 'Stationary activities only, breathing, stretching (when parked)' : 'NO movement interventions, breathing, mental strategies'}
+  * ${isEnergyContext ? 'Outdoors: Walking, fresh air activities' : 'Public spaces: Discreet interventions only'}
+- **${isEnergyContext ? 'Goal/preference' : 'Trigger type'}**: ${isEnergyContext ? 'Different activity preferences (quick boost, light movement, full workout) need different approaches' : 'Different triggers (stress, boredom, habit, seeing food) respond to different approaches'}
 - **Time of day**: Energy levels and appropriate activities vary by time (late night = quieter strategies)
 - **Previous effectiveness**: Prioritize interventions that have worked well in similar contexts
 - **Intervention categories**: Balance different types (physical, mental, behavioral, etc.)
 - **Complementary strategies**: Choose secondary that uses different mechanisms than primary
 
 Available intervention categories typically include:
-- Physical (movement, breathing, sensory)
+${isEnergyContext ?
+`- Movement (walking, stretching, exercise)
+- Motivational (goal-setting, visualization, accountability)
+- Environmental (lighting, music, space changes)
+- Cognitive (mindfulness, energy reframing, focus techniques)
+- Social (workout buddy, group activities)
+- Physiological (breathing, posture, hydration)` :
+`- Physical (movement, breathing, sensory)
 - Cognitive (mindfulness, reframing, distraction)
 - Behavioral (replacement activities, environmental changes)
 - Social (reaching out, accountability)
-- Nutritional (healthy alternatives, hydration)
+- Nutritional (healthy alternatives, hydration)`}
 
 Return your response as valid JSON with exactly this structure:
 {
@@ -105,9 +120,9 @@ CRITICAL: You must select interventions ONLY from the provided available list. D
     const contextDetails = `
 Current Situation:
 - Client: ${context.clientName}
-- Craving: ${context.cravingType} (intensity ${context.intensity}/10)
+- ${isEnergyContext ? `Blocker: ${context.cravingType} (energy level ${context.intensity}/10)` : `Craving: ${context.cravingType} (intensity ${context.intensity}/10)`}
 - Location: ${context.location} ⚠️  MUST consider location constraints when selecting interventions
-- Trigger: ${context.trigger}
+- ${isEnergyContext ? `Activity Goal: ${context.trigger}` : `Trigger: ${context.trigger}`}
 - Time: ${context.timeOfDay} on ${getDayName(parseInt(context.dayOfWeek))}
 
 ${context.previousEffectiveness && context.previousEffectiveness.length > 0 ? `
@@ -125,9 +140,9 @@ Select the PRIMARY and SECONDARY interventions that would be most effective for 
 
 IMPORTANT REMINDERS:
 1. Location is CRITICAL - reject any intervention that requires equipment/facilities not available at "${context.location}"
-2. Consider the trigger "${context.trigger}" - match intervention type to trigger (boredom→engagement, stress→calming, etc.)
+2. Consider the ${isEnergyContext ? `activity goal "${context.trigger}"` : `trigger "${context.trigger}"`} - ${isEnergyContext ? 'match intervention intensity to available time and desired outcome' : 'match intervention type to trigger (boredom→engagement, stress→calming, etc.)'}
 3. Time context matters - "${context.timeOfDay}" affects energy levels and appropriate activities
-4. Intensity ${context.intensity}/10 informs urgency of intervention needed`;
+4. ${isEnergyContext ? `Energy level ${context.intensity}/10 informs how gentle or intensive the intervention should be` : `Intensity ${context.intensity}/10 informs urgency of intervention needed`}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",

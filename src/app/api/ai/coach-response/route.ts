@@ -18,6 +18,11 @@ interface CoachContext {
   interventions?: Array<{ id: string; name: string; description: string }>;
   conversationHistory?: Array<{ sender: string; text: string; timestamp: Date }>;
   currentStep: ConversationStep;
+  // Energy-specific context
+  isEnergyContext?: boolean;
+  selectedBlocker?: string;
+  energyLevel?: number;
+  approach?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -64,7 +69,7 @@ export async function POST(request: NextRequest) {
 }
 
 function getPromptForStep(context: CoachContext) {
-  const { clientName, coachName, coachTone, selectedFood, intensity, location, trigger, chosenIntervention, interventions, conversationHistory, currentStep } = context;
+  const { clientName, coachName, coachTone, selectedFood, intensity, location, trigger, chosenIntervention, interventions, conversationHistory, currentStep, isEnergyContext, selectedBlocker, energyLevel, approach } = context;
   
   // Build conversation context from history
   const conversationContext = conversationHistory && conversationHistory.length > 0 
@@ -82,7 +87,9 @@ function getPromptForStep(context: CoachContext) {
   };
   
   const toneStyle = toneStyles[coachTone as keyof typeof toneStyles] || toneStyles.friendly;
-  const coachPersona = `You are ${coachName || 'a supportive nutrition coach'}. ${toneStyle} You're experienced in helping people overcome cravings through evidence-based strategies.`;
+  const coachPersona = isEnergyContext 
+    ? `You are ${coachName || 'a supportive fitness coach'}. ${toneStyle} You're experienced in helping people overcome movement barriers and find energy through evidence-based strategies.`
+    : `You are ${coachName || 'a supportive nutrition coach'}. ${toneStyle} You're experienced in helping people overcome cravings through evidence-based strategies.`;
   
   
   switch (currentStep) {
@@ -91,6 +98,24 @@ function getPromptForStep(context: CoachContext) {
 
 Conversation so far:
 ${conversationContext}` : '';
+      
+      if (isEnergyContext) {
+        return {
+          systemPrompt: `${coachPersona}
+
+A client has reached out for energy boost support. Welcome them warmly while acknowledging their courage to get moving.
+
+Style notes:
+- Use your authentic ${coachTone} communication style
+- Vary your opening - avoid starting with their name every time
+- Acknowledge their smart decision to reach out for movement support
+- Keep under 25 words
+- Set positive tone for working together
+- Avoid formulaic phrases like "I totally get that"${conversationSummary}`,
+          userPrompt: `Welcome ${clientName} who just reached out for energy boost support. Match your ${coachTone} style. VARY your greeting - don't always start with their name. Be authentic, not formulaic.`,
+          maxTokens: 40
+        };
+      }
       
       return {
         systemPrompt: `${coachPersona}
@@ -126,6 +151,24 @@ Style notes:
         maxTokens: 35
       };
 
+    case ConversationStep.IDENTIFY_BLOCKER:
+      const blockerConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
+      return {
+        systemPrompt: `${coachPersona}
+
+Find out what's blocking them from moving or being active. Be curious and understanding.
+
+Style notes:
+- Use your ${coachTone} communication style authentically
+- Vary your question pattern - avoid repetitive phrasing
+- Create safety for honest sharing about barriers
+- Keep it under 25 words
+- Be genuinely curious about what's holding them back${blockerConversationSummary}`,
+        userPrompt: `Ask what's blocking them from moving right now using your ${coachTone} style. Use varied, natural language that feels conversational.`,
+        maxTokens: 40
+      };
+
     case ConversationStep.GAUGE_INTENSITY:
       const intensityConversationSummary = hasConversationHistory ? `
 
@@ -147,11 +190,49 @@ Style notes:
         maxTokens: 40
       };
 
+    case ConversationStep.GAUGE_ENERGY:
+      const energyConversationSummary = hasConversationHistory ? `
+
+Conversation so far:
+${conversationContext}` : '';
+      
+      return {
+        systemPrompt: `${coachPersona}
+
+They shared what's blocking them: ${selectedBlocker}. Now understand their current energy level (1-10 scale).
+
+Style notes:
+- Use your ${coachTone} style naturally
+- Don't repeat information already discussed in conversation
+- Vary how you ask for the 1-10 energy rating
+- Keep under 25 words
+- Be understanding about their energy state${energyConversationSummary}`,
+        userPrompt: `Ask for their current energy level (1-10) using your ${coachTone} style. Be natural and understanding.`,
+        maxTokens: 40
+      };
+
     case ConversationStep.IDENTIFY_LOCATION:
       const locationConversationSummary = hasConversationHistory ? `
 
 Conversation so far:
 ${conversationContext}` : '';
+      
+      if (isEnergyContext) {
+        return {
+          systemPrompt: `${coachPersona}
+
+They're feeling ${selectedBlocker} with energy level ${energyLevel}/10. Understanding their location helps provide better movement suggestions.
+
+Guidelines:
+- Use your ${coachTone} style
+- DON'T repeat details already in conversation (blocker, energy level)
+- Ask where they are naturally
+- Keep it under 25 words
+- Show understanding that environment affects movement options${locationConversationSummary}`,
+          userPrompt: `Ask where they are right now using your ${coachTone} style. Be conversational and natural.`,
+          maxTokens: 40
+        };
+      }
       
       return {
         systemPrompt: `${coachPersona}
@@ -189,9 +270,38 @@ Guidelines:
         maxTokens: 50
       };
 
+    case ConversationStep.IDENTIFY_APPROACH:
+      const approachConversationSummary = hasConversationHistory ? `
+
+Conversation so far:
+${conversationContext}` : '';
+      
+      return {
+        systemPrompt: `${coachPersona}
+
+They're at ${location} feeling ${selectedBlocker} (energy ${energyLevel}/10). Help them identify what usually helps them get unstuck or overcome barriers to movement.
+
+Guidelines:
+- Use your ${coachTone} style
+- Don't repeat details already discussed in conversation
+- Ask about their preferred approach to overcoming obstacles in an encouraging way
+- Keep it under 30 words
+- Be supportive - focus on what typically works for them${approachConversationSummary}`,
+        userPrompt: `Ask what usually helps them get unstuck using your ${coachTone} style. Be encouraging and focus on their preferred approach to overcoming barriers.`,
+        maxTokens: 50
+      };
+
     case ConversationStep.SUGGEST_TACTIC:
       const intervention = interventions?.[0];
       const tacticConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
+      
+      if (isEnergyContext) {
+        return {
+          systemPrompt: `${coachPersona}\n\nThey're feeling ${selectedBlocker} (energy ${energyLevel}/10) at ${location}, and usually get unstuck through ${approach}. Time to suggest a helpful movement strategy that aligns with their preferred approach.\n\nGuidelines:\n- Use your ${coachTone} style\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Frame it as a way to overcome their blocker using their preferred approach\n- Keep it under 50 words\n- Be encouraging and specific about how this intervention matches their approach${tacticConversationSummary}`,
+          userPrompt: `Suggest they try "${intervention?.name}" (${intervention?.description}) using your ${coachTone} style. Connect it to their preferred approach: ${approach}.`,
+          maxTokens: 80
+        };
+      }
       
       return {
         systemPrompt: `${coachPersona}\n\nThey're craving ${selectedFood} (${intensity}/10) at ${location}, triggered by ${trigger}. Time to suggest a helpful strategy.\n\nGuidelines:\n- Use your ${coachTone} style\n\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Frame it as an alternative to the craving\n- Keep it under 50 words\n- Be encouraging and specific about the intervention${tacticConversationSummary}`,

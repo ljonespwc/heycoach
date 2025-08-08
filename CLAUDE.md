@@ -74,11 +74,13 @@ src/
 
 ### Client Portal
 - **Craving SOS**: Real-time support for food cravings
-- **Movement Support**: Motivation for physical activity
+- **Energy Boost**: Real-time support for motivation and movement
 - **PWA Capability**: Installable mobile app experience
 - **Token-based Access**: Secure, shareable client links
 
-### Conversation Flow
+### Conversation Flows
+
+#### Craving SOS Flow
 The craving support follows a structured conversation with AI-powered natural responses:
 1. **WELCOME**: Initial greeting and assessment
 2. **IDENTIFY_CRAVING**: Food selection and identification  
@@ -88,6 +90,18 @@ The craving support follows a structured conversation with AI-powered natural re
 6. **SUGGEST_TACTIC**: AI-powered intervention suggestion
 7. **ENCOURAGEMENT**: Support during intervention
 8. **RATE_RESULT**: Post-intervention effectiveness rating
+9. **CLOSE**: Session completion
+
+#### Energy Boost Flow (NEW - Aug 2025)
+The energy/motivation support follows a parallel 6-step conversation structure:
+1. **WELCOME**: Initial greeting and energy assessment
+2. **IDENTIFY_BLOCKER**: What's preventing movement (tired, no time, not motivated, etc.)
+3. **GAUGE_ENERGY**: Rate current energy level (1-10)
+4. **IDENTIFY_LOCATION**: Where they are (home, gym, work, outdoors)
+5. **IDENTIFY_GOAL**: Activity preference (quick boost, light movement, full workout)
+6. **SUGGEST_TACTIC**: AI-powered energy intervention suggestion
+7. **ENCOURAGEMENT**: Support during activity
+8. **RATE_RESULT**: Post-activity energy level rating
 9. **CLOSE**: Session completion
 
 ### AI Integration (GPT-4.1-mini)

@@ -1,7 +1,7 @@
 // Conversation flow logic for Craving SOS
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getActiveClientInterventions, updateIncidentByClientId } from './craving-db';
-import { generateCoachResponse, getFallbackResponse } from '../openai/coach-ai';
+import { generateCoachResponse } from '../openai/coach-ai';
 import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
 
 export interface Option {
@@ -50,7 +50,7 @@ export async function getCoachResponse({
 }): Promise<CoachResponse> {
   const now = new Date();
   
-  // Helper function to get AI response with fallback
+  // Helper function to get AI response - throw error on failure
   const getResponseText = async (step: ConversationStep, interventions?: Intervention[]): Promise<string> => {
     try {
       const aiResponse = await generateCoachResponse({
@@ -68,20 +68,8 @@ export async function getCoachResponse({
       });
       return aiResponse;
     } catch (error) {
-      console.log('🤖 Falling back to standard response for', step, 'due to:', error);
-      return getFallbackResponse(step, {
-        clientName,
-        coachName,
-        coachTone,
-        selectedFood,
-        intensity,
-        location,
-        trigger,
-        chosenIntervention,
-        interventions,
-        conversationHistory,
-        currentStep: step
-      });
+      console.error('❌ AI response generation failed:', error);
+      throw new Error('Unable to generate coach response. Please try again.');
     }
   };
   
@@ -215,6 +203,7 @@ export async function getCoachResponse({
           trigger: trigger || 'unknown',
           timeOfDay,
           dayOfWeek,
+          interventionType: 'craving',
           availableInterventions: allInterventions
         });
 
