@@ -24,6 +24,7 @@ export async function getEnergyResponse({
   clientName,
   clientId,
   selectedBlocker,
+  chosenIntervention,
   coachName,
   coachTone,
   energyLevel,
@@ -31,7 +32,7 @@ export async function getEnergyResponse({
   approach,
   conversationHistory,
   primaryIntervention,
-  secondaryIntervention // eslint-disable-line @typescript-eslint/no-unused-vars
+  secondaryIntervention
 }: {
   currentStep: ConversationStep;
   clientName: string;
@@ -180,7 +181,10 @@ export async function getEnergyResponse({
             timestamp: now,
           },
           nextStep: ConversationStep.ENCOURAGEMENT,
-          options: ['Yes, I\'ll try it', 'Another idea'],
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" },
+            { emoji: '💡', name: "Another idea" }
+          ],
           interventions: primaryIntervention ? [primaryIntervention] : undefined
         };
       }
@@ -217,7 +221,10 @@ export async function getEnergyResponse({
                 timestamp: now,
               },
               nextStep: ConversationStep.ENCOURAGEMENT,
-              options: ['Yes, I\'ll try it', 'Another idea'],
+              options: [
+                { emoji: '👍', name: "Yes, I'll try it" },
+                { emoji: '💡', name: "Another idea" }
+              ],
               interventions: [smartSelection.primaryIntervention, smartSelection.secondaryIntervention]
             };
           }
@@ -235,7 +242,10 @@ export async function getEnergyResponse({
               timestamp: now,
             },
             nextStep: ConversationStep.ENCOURAGEMENT,
-            options: ['Yes, I\'ll try it', 'Another idea'],
+            options: [
+              { emoji: '👍', name: "Yes, I'll try it" },
+              { emoji: '💡', name: "Another idea" }
+            ],
             interventions: [allInterventions[0]]
           };
         }
@@ -266,6 +276,88 @@ export async function getEnergyResponse({
       }
 
     case ConversationStep.ENCOURAGEMENT:
+      // Check if this is a response to "Another idea" or if we're accepting a second intervention
+      const isSecondOption = chosenIntervention && chosenIntervention.name === "Another idea";
+      // If we're accepting a second intervention (after "Another idea" was selected)
+      // Use a more specific type to avoid the 'any' TypeScript error
+      const isAcceptingSecondIntervention = chosenIntervention && 
+                                          (chosenIntervention as { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted === true;
+      
+      // If we're accepting the second intervention (after clicking "Yes, I'll try it" for the second option)
+      if (isAcceptingSecondIntervention) {
+        // Show encouragement for the second intervention
+        const secondEncouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: secondEncouragementText,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.RATE_RESULT
+        };
+      } else if (isSecondOption) {
+        console.log('Getting second energy intervention option for client:', clientId);
+        
+        // Use the pre-selected secondary intervention from smart selection
+        if (secondaryIntervention) {
+          const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [secondaryIntervention]);
+          return {
+            response: {
+              id: `coach-${now.getTime()}`,
+              sender: 'coach',
+              text: secondInterventionText,
+              type: 'text',
+              timestamp: now,
+            },
+            nextStep: ConversationStep.ENCOURAGEMENT,
+            options: [
+              { emoji: '👍', name: "Yes, I'll try it" }
+            ],
+            interventions: [secondaryIntervention]
+          };
+        }
+        
+        // Fallback - get all interventions and pick a different one
+        const allInterventions = await getActiveEnergyInterventions(clientId, 25);
+        const filteredInterventions = allInterventions.filter(i => 
+          !primaryIntervention || i.id !== primaryIntervention.id
+        );
+        
+        if (filteredInterventions.length === 0) {
+          // No more interventions available
+          return {
+            response: {
+              id: `coach-${now.getTime()}`,
+              sender: 'coach',
+              text: "I don't have any other interventions to suggest right now. Please contact your coach for more strategies.",
+              type: 'text',
+              timestamp: now,
+            },
+            nextStep: ConversationStep.CLOSE
+          };
+        }
+        
+        // We have a second intervention to suggest
+        const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [filteredInterventions[0]]);
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: secondInterventionText,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.ENCOURAGEMENT,
+          options: [
+            { emoji: '👍', name: "Yes, I'll try it" }
+          ],
+          interventions: [filteredInterventions[0]]
+        };
+      }
+      
+      // First option was accepted - show encouragement and include full description of the chosen intervention
       const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
       return {
         response: {
