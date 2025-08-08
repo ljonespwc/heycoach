@@ -219,6 +219,43 @@ Custom properties for theming:
 
 ## Critical Bug Fixes (Aug 2025)
 
+### Secondary Intervention AI Encouragement Bug Resolution (Aug 8, 2025)
+**Root Cause**: When users clicked "Another idea" and then accepted the secondary intervention, the AI encouragement step referenced the primary intervention instead of the secondary intervention they actually chose.
+
+**Symptoms**:
+- User flow: Primary intervention → "Another idea" → Secondary intervention → "Yes, I'll try it" 
+- **Expected**: "I'm glad you're trying [Secondary Intervention Name]"
+- **Actual**: "I'm glad you're trying [Primary Intervention Name]" 
+- Final effectiveness step worked correctly (referenced secondary intervention)
+- Issue occurred in both Craving SOS and Energy Boost flows
+
+**Root Causes Discovered**:
+1. **Missing Intervention Context**: `getResponseText(ConversationStep.ENCOURAGEMENT)` calls weren't passing the interventions array, so AI had no context about which intervention to reference
+2. **Wrong Intervention Detection**: Logic tried to detect secondary intervention acceptance through complex conversation history parsing and hardcoded text matching
+3. **AI Prompt Bug in RATE_RESULT**: Used `chosenIntervention?.name` instead of `interventions?.[0]?.name`, causing "undefined" in effectiveness messages
+
+**Solution**: Clean, simple logic with no hardcoded text:
+```typescript
+// In ENCOURAGEMENT step: If secondaryIntervention exists, we just came from secondary flow
+const interventionForEncouragement = secondaryIntervention || primaryIntervention;
+const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT, 
+  interventionForEncouragement ? [interventionForEncouragement] : []);
+```
+
+**Key Changes**:
+- **Fixed intervention context passing**: Now pass correct intervention array to AI prompts
+- **Simple precedence logic**: Use secondary if available (only set when "Another idea" was clicked), otherwise primary
+- **Fixed RATE_RESULT prompts**: Use `interventions?.[0]?.name` with proper fallback chain
+- **Removed hardcoded text**: No more checking for "Yes, I'll try it" or keyword matching
+- **Applied to both flows**: Craving SOS and Energy Boost now have identical, correct behavior
+
+**Files Modified**:
+- `src/lib/client-portal/craving-conversation.ts`: Fixed encouragement intervention detection
+- `src/lib/client-portal/energy-conversation.ts`: Fixed encouragement intervention detection  
+- `src/app/api/ai/coach-response/route.ts`: Fixed RATE_RESULT intervention name resolution
+
+**Key Lesson**: Don't overcomplicate state detection. The presence of `secondaryIntervention` in the conversation function parameters is the perfect indicator that we're in secondary intervention flow.
+
 ### Energy Boost "No Interventions" Bug Resolution
 **Root Cause**: Missing RLS (Row Level Security) policy prevented client portal from accessing `energy_interventions` table.
 
