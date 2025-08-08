@@ -346,17 +346,29 @@ export default function CravingSosPage() {
             {message.sender === 'coach' && (
               <div className="mt-2 flex items-center space-x-1">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                  <button
-                    key={level}
-                    onClick={() => handleIntensitySelect(level)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center
-                      ${level <= 3 ? 'bg-green-100 text-green-700' : 
-                        level <= 7 ? 'bg-yellow-100 text-yellow-700' : 
-                        'bg-red-100 text-red-700'}`}
-                    disabled={isLoading}
-                  >
-                    {level}
-                  </button>
+                  currentStep === ConversationStep.CLOSE ? (
+                    <div
+                      key={level}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center cursor-default
+                        ${level <= 3 ? 'bg-green-50 text-green-400' : 
+                          level <= 7 ? 'bg-yellow-50 text-yellow-400' : 
+                          'bg-red-50 text-red-400'}`}
+                    >
+                      {level}
+                    </div>
+                  ) : (
+                    <button
+                      key={level}
+                      onClick={() => handleIntensitySelect(level)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center
+                        ${level <= 3 ? 'bg-green-100 text-green-700 hover:bg-green-200' : 
+                          level <= 7 ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 
+                          'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                      disabled={isLoading}
+                    >
+                      {level}
+                    </button>
+                  )
                 ))}
               </div>
             )}
@@ -584,7 +596,7 @@ export default function CravingSosPage() {
       </div>
       
       {/* Quick option buttons */}
-      {optionChoices.length > 0 && (
+      {optionChoices.length > 0 && currentStep !== ConversationStep.CLOSE && (
         <div className="p-2 border-t border-gray-200 bg-white">
           <div className="flex flex-wrap gap-2">
             {optionChoices.map((option, index) => (
@@ -609,16 +621,16 @@ export default function CravingSosPage() {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-            placeholder="Type your message..."
-            className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            disabled={isLoading}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && currentStep !== ConversationStep.CLOSE && handleSendMessage()}
+            placeholder={currentStep === ConversationStep.CLOSE ? "Session complete - great work!" : "Type your message..."}
+            className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:text-gray-500"
+            disabled={isLoading || currentStep === ConversationStep.CLOSE}
           />
           <button
             onClick={() => handleSendMessage()}
-            disabled={(!inputValue.trim() && !optionChoices.length) || isLoading}
+            disabled={(!inputValue.trim() && !optionChoices.length) || isLoading || currentStep === ConversationStep.CLOSE}
             className={`rounded-full p-2 ${
-              (!inputValue.trim() && !optionChoices.length) || isLoading
+              (!inputValue.trim() && !optionChoices.length) || isLoading || currentStep === ConversationStep.CLOSE
                 ? 'bg-gray-200 text-gray-400'
                 : 'bg-purple-500 text-white hover:bg-purple-600'
             }`}
