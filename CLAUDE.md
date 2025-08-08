@@ -217,6 +217,29 @@ Custom properties for theming:
 - Persist selected food across conversation steps
 - Simplified craving prompt text for better user engagement
 
+## Critical Bug Fixes (Aug 2025)
+
+### Energy Boost "No Interventions" Bug Resolution
+**Root Cause**: Missing RLS (Row Level Security) policy prevented client portal from accessing `energy_interventions` table.
+
+**Symptoms**: 
+- Energy Boost showed "I don't have any interventions configured" despite 25+ interventions in database
+- Client ID was correct, database queries worked in backend, but frontend received empty results
+- Craving SOS worked perfectly with identical code structure
+
+**Solution**: Added missing RLS policy:
+```sql
+CREATE POLICY "client_portal_read_energy_interventions" ON "public"."energy_interventions"
+AS PERMISSIVE FOR SELECT TO public USING (true);
+```
+
+**Key Lesson**: When client portal queries return empty results but backend queries succeed, always check RLS policies first. Client portal runs with anonymous/public access and needs explicit read permissions for each table.
+
+**Related Fixes**:
+- Added button emojis to Energy Boost (👍 💡) for UI consistency
+- Implemented complete secondary intervention flow matching Craving SOS
+- Cleaned up debug logging and function name collisions
+
 ## Development Notes
 
 ### Code Style

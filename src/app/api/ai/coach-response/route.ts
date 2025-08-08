@@ -320,6 +320,8 @@ Guidelines:
       const isSecondOption = chosenIntervention?.name === "Another idea";
       
       if (isSecondOption) {
+        // This should not happen for encouragement step - second interventions should use SUGGEST_TACTIC step
+        console.warn('ENCOURAGEMENT step called for "Another idea" - this should use SUGGEST_TACTIC step');
         const secondIntervention = interventions?.[0];
         return {
           systemPrompt: `${coachPersona}\n\nThey wanted a different approach, so now you're suggesting "${secondIntervention?.name}".\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Acknowledge they wanted another option positively\n- Suggest the new intervention naturally\n- Keep it under 40 words\n- Avoid cliché phrases like "You've got this!"`,
@@ -328,18 +330,28 @@ Guidelines:
         };
       }
       
+      // For regular encouragement, use the actual intervention name from interventions array
+      const actualIntervention = interventions?.[0];
+      console.log('ENCOURAGEMENT step with intervention:', actualIntervention?.name, 'chosenIntervention:', chosenIntervention?.name);
+      
       return {
-        systemPrompt: `${coachPersona}\n\nThey agreed to try "${chosenIntervention?.name}". Give them encouragement and let them know you'll check back.\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Celebrate their commitment genuinely\n- Build their confidence naturally\n- Mention you'll check back soon\n- Keep it under 40 words\n- Avoid overused phrases like "You've got this!" or "I believe in you!"`,
-        userPrompt: `They will try "${chosenIntervention?.name}". Use your ${coachTone} style to encourage them authentically and mention you'll check back. Avoid cliché motivational phrases.`,
+        systemPrompt: `${coachPersona}\n\nThey agreed to try "${actualIntervention?.name}". Give them encouragement and let them know you'll check back.\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Celebrate their commitment genuinely\n- Build their confidence naturally\n- Mention you'll check back soon\n- Keep it under 40 words\n- Avoid overused phrases like "You've got this!" or "I believe in you!"`,
+        userPrompt: `They will try "${actualIntervention?.name}". Use your ${coachTone} style to encourage them authentically and mention you'll check back. Avoid cliché motivational phrases.`,
         maxTokens: 60
       };
 
     case ConversationStep.RATE_RESULT:
       const rateResultConversationSummary = hasConversationHistory ? `\n\nConversation so far:\n${conversationContext}` : '';
       
+      // For RATE_RESULT, use the actual intervention from interventions array, not chosenIntervention
+      const rateResultIntervention = interventions?.[0];
+      const interventionName = rateResultIntervention?.name || chosenIntervention?.name || 'the strategy';
+      const contextFood = isEnergyContext ? selectedBlocker : selectedFood;
+      const contextType = isEnergyContext ? 'energy challenge' : 'craving';
+      
       return {
-        systemPrompt: `${coachPersona}\n\nCheck back about how "${chosenIntervention?.name}" worked for their ${selectedFood} craving.\n\nGuidelines:\n- Use your ${coachTone} communication style\n\n- Don't repeat details already discussed\n- Reference the specific strategy they tried\n- Ask for effectiveness rating 1-10 in varied ways\n- Keep it under 30 words\n- Be curious and supportive regardless of results\n- Vary your check-in approach${rateResultConversationSummary}`,
-        userPrompt: `Check back about "${chosenIntervention?.name}" effectiveness using your ${coachTone} style. Ask for a 1-10 rating. Be natural and supportive.`,
+        systemPrompt: `${coachPersona}\n\nCheck back about how "${interventionName}" worked for their ${contextFood} ${contextType}.\n\nGuidelines:\n- Use your ${coachTone} communication style\n- Don't repeat details already discussed\n- Reference the specific strategy they tried\n- Ask for effectiveness rating 1-10 in varied ways\n- Keep it under 30 words\n- Be curious and supportive regardless of results\n- Vary your check-in approach${rateResultConversationSummary}`,
+        userPrompt: `Check back about "${interventionName}" effectiveness using your ${coachTone} style. Ask for a 1-10 rating. Be natural and supportive.`,
         maxTokens: 50
       };
 

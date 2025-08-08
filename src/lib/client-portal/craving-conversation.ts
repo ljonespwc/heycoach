@@ -257,7 +257,7 @@ export async function getCoachResponse({
       if (isAcceptingSecondIntervention) {
         console.log('User accepted the second intervention');
         // Show encouragement for the second intervention
-        const secondEncouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
+        const secondEncouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT, secondaryIntervention ? [secondaryIntervention] : []);
         return {
           response: {
             id: `coach-${now.getTime()}`,
@@ -273,7 +273,7 @@ export async function getCoachResponse({
         
         // Use the pre-selected secondary intervention from smart selection
         if (secondaryIntervention) {
-          const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [secondaryIntervention]);
+          const secondInterventionText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [secondaryIntervention]);
           return {
             response: {
               id: `coach-${now.getTime()}`,
@@ -311,7 +311,7 @@ export async function getCoachResponse({
         }
         
         // We have a second intervention to suggest
-        const secondInterventionText = await getResponseText(ConversationStep.ENCOURAGEMENT, [filteredInterventions[0]]);
+        const secondInterventionText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [filteredInterventions[0]]);
         return {
           response: {
             id: `coach-${now.getTime()}`,
@@ -329,7 +329,19 @@ export async function getCoachResponse({
       }
       
       // First option was accepted - show encouragement and include full description of the chosen intervention
-      const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT);
+      console.log('🔍 ENCOURAGEMENT DEBUG:');
+      console.log('  chosenIntervention:', chosenIntervention);
+      console.log('  primaryIntervention:', primaryIntervention?.name);
+      console.log('  secondaryIntervention:', secondaryIntervention?.name);
+      console.log('  conversationHistory last 2:', conversationHistory?.slice(-2).map(m => ({ sender: m.sender, text: m.text.slice(0, 50) })));
+      
+      // SIMPLE LOGIC: If secondaryIntervention exists, we just came from secondary intervention flow
+      // (because secondary is only set when "Another idea" was clicked and secondary was presented)
+      const interventionForEncouragement = secondaryIntervention || primaryIntervention;
+      console.log('✅ Using intervention for encouragement:', interventionForEncouragement?.name);
+      
+      console.log('  → Using intervention for encouragement:', interventionForEncouragement?.name);
+      const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT, interventionForEncouragement ? [interventionForEncouragement] : []);
       return {
         response: {
           id: `coach-${now.getTime()}`,
