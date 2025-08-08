@@ -16,8 +16,8 @@ export function TokenManagement({ client }: { client: Client }) {
         <div className="space-y-3">
           {client.access_token ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 font-mono text-gray-800 text-sm bg-gray-50 p-2 rounded mr-2 truncate max-w-[calc(100%-5rem)] overflow-hidden text-ellipsis">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 font-mono text-gray-800 text-sm bg-gray-50 p-2 rounded break-all">
                   {generateClientPortalUrl(client.access_token || '')}
                 </div>
                 <button
@@ -25,7 +25,7 @@ export function TokenManagement({ client }: { client: Client }) {
                     navigator.clipboard.writeText(generateClientPortalUrl(client.access_token || ''))
                     toast.success('Portal URL copied to clipboard')
                   }}
-                  className="p-2 text-gray-500 hover:text-gray-700"
+                  className="flex-shrink-0 p-2 text-gray-500 hover:text-gray-700"
                   title="Copy portal URL"
                 >
                   <ClipboardIcon className="h-5 w-5" />

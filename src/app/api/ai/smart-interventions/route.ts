@@ -64,9 +64,14 @@ Your task is to analyze the client's current situation and select:
 
 Consider these factors when selecting interventions:
 - **Craving intensity**: Higher intensity may need more immediate/physical interventions
-- **Location**: Some strategies work better in specific environments (home vs work vs public)
-- **Trigger type**: Different triggers (stress, boredom, habit) respond to different approaches
-- **Time of day**: Energy levels and appropriate activities vary by time
+- **Location**: CRITICAL - Only select interventions that are feasible in the client's current environment:
+  * Home: All interventions available (bathroom access, kitchen, privacy)
+  * Restaurant: NO bathroom-based interventions (brushing teeth, mouthwash). Focus on mental strategies, breathing, stepping outside, drinking water, mindfulness
+  * Work: Limited privacy, avoid loud/obvious activities. Focus on discreet mental/breathing techniques
+  * Car: NO movement interventions. Focus on breathing, mental strategies, pulling over safely if needed
+  * Public spaces: Discreet interventions only, avoid anything requiring privacy or special equipment
+- **Trigger type**: Different triggers (stress, boredom, habit, seeing food) respond to different approaches
+- **Time of day**: Energy levels and appropriate activities vary by time (late night = quieter strategies)
 - **Previous effectiveness**: Prioritize interventions that have worked well in similar contexts
 - **Intervention categories**: Balance different types (physical, mental, behavioral, etc.)
 - **Complementary strategies**: Choose secondary that uses different mechanisms than primary
@@ -101,7 +106,7 @@ CRITICAL: You must select interventions ONLY from the provided available list. D
 Current Situation:
 - Client: ${context.clientName}
 - Craving: ${context.cravingType} (intensity ${context.intensity}/10)
-- Location: ${context.location}
+- Location: ${context.location} ⚠️  MUST consider location constraints when selecting interventions
 - Trigger: ${context.trigger}
 - Time: ${context.timeOfDay} on ${getDayName(parseInt(context.dayOfWeek))}
 
@@ -116,7 +121,13 @@ ${context.availableInterventions.map(intervention =>
   `- ID: ${intervention.id}, Name: "${intervention.name}", Category: ${intervention.category || 'Unknown'}, Description: "${intervention.description}"`
 ).join('\n')}
 
-Select the PRIMARY and SECONDARY interventions that would be most effective for this specific situation.`;
+Select the PRIMARY and SECONDARY interventions that would be most effective for this specific situation.
+
+IMPORTANT REMINDERS:
+1. Location is CRITICAL - reject any intervention that requires equipment/facilities not available at "${context.location}"
+2. Consider the trigger "${context.trigger}" - match intervention type to trigger (boredom→engagement, stress→calming, etc.)
+3. Time context matters - "${context.timeOfDay}" affects energy levels and appropriate activities
+4. Intensity ${context.intensity}/10 informs urgency of intervention needed`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
