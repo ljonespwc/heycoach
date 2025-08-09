@@ -301,7 +301,7 @@ export class EnergyService {
   }
 
   // Perform smart intervention selection when we have enough context
-  private async performSmartInterventionSelection(): Promise<void> {
+  private async performSmartInterventionSelection(clientName: string): Promise<void> {
     if (!this.clientId || !this.selectedBlocker || !this.energyLevel || !this.location || !this.approach) {
       console.log('❌ Missing context for smart intervention selection');
       return;
@@ -318,7 +318,7 @@ export class EnergyService {
       const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
       
       const smartSelection = await selectSmartInterventions({
-        clientName: this.coachName || 'Client', // Use coach name as backup
+        clientName: clientName || 'Client', // Use client name with fallback
         cravingType: this.selectedBlocker,
         intensity: this.energyLevel,
         location: this.location,
@@ -411,7 +411,7 @@ export class EnergyService {
           this.approach = cleanValue;
           // Note: goal/preference isn't directly stored in movement_incidents table
           // Now we have all context - perform smart intervention selection
-          await this.performSmartInterventionSelection();
+          await this.performSmartInterventionSelection(clientName);
           break;
 
         case ConversationStep.RATE_RESULT:
@@ -495,7 +495,7 @@ export class EnergyService {
           this.approach = cleanValue;
           // Note: approach preference isn't directly stored in movement_incidents table
           // Now we have all context - perform smart intervention selection
-          await this.performSmartInterventionSelection();
+          await this.performSmartInterventionSelection(clientName);
           break;
           
         case ConversationStep.ENCOURAGEMENT:

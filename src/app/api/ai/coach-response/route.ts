@@ -139,12 +139,13 @@ Find out what specific food they're craving. Be curious without judgment.
 
 Style notes:
 - Use your ${coachTone} communication style authentically
+- Use their first name (${clientName}) to make this personal and welcoming
 - Vary your question pattern - avoid repetitive phrasing
 - Create safety for honest sharing
-- Keep it under 20 words
+- Keep it under 25 words
 - Be genuinely curious, not clinical${conversationSummary}`,
-        userPrompt: `Ask what they're craving using your ${coachTone} style. Use varied, natural language that feels conversational.`,
-        maxTokens: 35
+        userPrompt: `Ask ${clientName} what they're craving using your ${coachTone} style. Use their first name and make it feel welcoming and conversational.`,
+        maxTokens: 40
       };
 
     case ConversationStep.IDENTIFY_BLOCKER:
@@ -155,12 +156,13 @@ Find out what's blocking them from moving or being active. Be curious and unders
 
 Style notes:
 - Use your ${coachTone} communication style authentically
+- Use their first name (${clientName}) to make this personal and welcoming
 - Vary your question pattern - avoid repetitive phrasing
 - Create safety for honest sharing about barriers
-- Keep it under 25 words
+- Keep it under 30 words
 - Be genuinely curious about what's holding them back${conversationSummary}`,
-        userPrompt: `Ask what's blocking them from moving right now using your ${coachTone} style. Use varied, natural language that feels conversational.`,
-        maxTokens: 40
+        userPrompt: `Ask ${clientName} what's blocking them from moving right now using your ${coachTone} style. Use their first name and make it feel welcoming and conversational.`,
+        maxTokens: 45
       };
 
     case ConversationStep.GAUGE_INTENSITY:

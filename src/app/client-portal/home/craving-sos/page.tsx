@@ -191,7 +191,7 @@ export default function CravingSosPage() {
               return;
             }
 
-            // Start directly with food selection message (skip redundant welcome)
+            // Start directly with food selection message 
             const foodSelectionRes = await cravingServiceRef.current.getFoodSelectionMessage(firstName);
             
             // Save food selection message directly using the incident ID

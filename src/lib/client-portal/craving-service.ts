@@ -314,7 +314,7 @@ export class CravingService {
   }
 
   // Perform smart intervention selection when we have enough context
-  private async performSmartInterventionSelection(): Promise<void> {
+  private async performSmartInterventionSelection(clientName: string): Promise<void> {
     if (!this.clientId || !this.selectedFood || !this.intensity || !this.location || !this.trigger) {
       console.log('❌ Missing context for smart intervention selection');
       return;
@@ -331,7 +331,7 @@ export class CravingService {
       const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
       
       const smartSelection = await selectSmartInterventions({
-        clientName: this.coachName || 'Client', // Use coach name as backup
+        clientName: clientName || 'Client', // Use client name with fallback
         cravingType: this.selectedFood,
         intensity: this.intensity,
         location: this.location,
@@ -424,7 +424,7 @@ export class CravingService {
           this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
           // Now we have all context - perform smart intervention selection
-          await this.performSmartInterventionSelection();
+          await this.performSmartInterventionSelection(clientName);
           break;
 
         case ConversationStep.RATE_RESULT:
@@ -515,7 +515,7 @@ export class CravingService {
           this.trigger = cleanValue;
           await this.updateIncident({ context: cleanValue });
           // Now we have all context - perform smart intervention selection
-          await this.performSmartInterventionSelection();
+          await this.performSmartInterventionSelection(clientName);
           break;
           
         case ConversationStep.ENCOURAGEMENT:
@@ -640,15 +640,6 @@ export class CravingService {
     setTimeout(async () => {
       const followUpConversationHistory = await this.getConversationHistory();
       
-      // Determine which intervention was actually tried based on conversation history
-      let actualInterventionTried = this.primaryIntervention;
-      if (followUpConversationHistory && this.secondaryIntervention) {
-        const clientMessages = followUpConversationHistory.filter(m => m.sender === 'client');
-        const hasClickedAnotherIdea = clientMessages.some(msg => msg.text.includes('Another idea'));
-        if (hasClickedAnotherIdea) {
-          actualInterventionTried = this.secondaryIntervention;
-        }
-      }
       
       const followUpRes = await getCoachResponse({
         currentStep: ConversationStep.RATE_RESULT,
@@ -664,7 +655,6 @@ export class CravingService {
         conversationHistory: followUpConversationHistory,
         primaryIntervention: this.primaryIntervention || undefined,
         secondaryIntervention: this.secondaryIntervention || undefined,
-        interventions: actualInterventionTried ? [actualInterventionTried] : undefined,
       });
       
       await onMessage(followUpRes.response);
