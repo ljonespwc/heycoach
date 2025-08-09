@@ -219,42 +219,33 @@ Custom properties for theming:
 
 ## Critical Bug Fixes (Aug 2025)
 
-### Secondary Intervention AI Encouragement Bug Resolution (Aug 8, 2025)
-**Root Cause**: When users clicked "Another idea" and then accepted the secondary intervention, the AI encouragement step referenced the primary intervention instead of the secondary intervention they actually chose.
+### Intervention Reference Bug Fixes (Aug 8-9, 2025)
 
-**Symptoms**:
-- User flow: Primary intervention → "Another idea" → Secondary intervention → "Yes, I'll try it" 
-- **Expected**: "I'm glad you're trying [Secondary Intervention Name]"
-- **Actual**: "I'm glad you're trying [Primary Intervention Name]" 
-- Final effectiveness step worked correctly (referenced secondary intervention)
-- Issue occurred in both Craving SOS and Energy Boost flows
+#### AI Greetings & First Name Usage Fix (Aug 8)
+**Root Cause**: AI responses started with repetitive "Hey" and "Hey friend" greetings, and didn't use client's first name in initial messages.
 
-**Root Causes Discovered**:
-1. **Missing Intervention Context**: `getResponseText(ConversationStep.ENCOURAGEMENT)` calls weren't passing the interventions array, so AI had no context about which intervention to reference
-2. **Wrong Intervention Detection**: Logic tried to detect secondary intervention acceptance through complex conversation history parsing and hardcoded text matching
-3. **AI Prompt Bug in RATE_RESULT**: Used `chosenIntervention?.name` instead of `interventions?.[0]?.name`, causing "undefined" in effectiveness messages
+**Solution**: 
+- Standardized conversation history across ALL conversation steps using single variable
+- Added explicit first name usage request in WELCOME step prompts
+- Added greeting variation guidance to prevent "Hey/Hi" overuse
 
-**Solution**: Clean, simple logic with no hardcoded text:
-```typescript
-// In ENCOURAGEMENT step: If secondaryIntervention exists, we just came from secondary flow
-const interventionForEncouragement = secondaryIntervention || primaryIntervention;
-const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT, 
-  interventionForEncouragement ? [interventionForEncouragement] : []);
-```
+#### Secondary Intervention ENCOURAGEMENT Bug (Aug 8) 
+**Root Cause**: When users clicked "Another idea" then "Yes, I'll try it", encouragement referenced primary intervention instead of secondary.
 
-**Key Changes**:
-- **Fixed intervention context passing**: Now pass correct intervention array to AI prompts
-- **Simple precedence logic**: Use secondary if available (only set when "Another idea" was clicked), otherwise primary
-- **Fixed RATE_RESULT prompts**: Use `interventions?.[0]?.name` with proper fallback chain
-- **Removed hardcoded text**: No more checking for "Yes, I'll try it" or keyword matching
-- **Applied to both flows**: Craving SOS and Energy Boost now have identical, correct behavior
+**Solution**: Implemented conversation history analysis to detect "Another idea" clicks and determine which intervention flow the user is in. Uses simple text matching to identify secondary intervention acceptance.
+
+#### RATE_RESULT Intervention Detection Bug (Aug 9)
+**Root Cause**: Final effectiveness question asked about wrong intervention when secondary intervention was tried.
+
+**Solution**: Applied same conversation history analysis in follow-up scheduling to determine which intervention was actually tried and pass correct intervention to the AI prompt for the effectiveness question.
 
 **Files Modified**:
+- `src/app/api/ai/coach-response/route.ts`: Standardized conversation history, first name usage
 - `src/lib/client-portal/craving-conversation.ts`: Fixed encouragement intervention detection
-- `src/lib/client-portal/energy-conversation.ts`: Fixed encouragement intervention detection  
-- `src/app/api/ai/coach-response/route.ts`: Fixed RATE_RESULT intervention name resolution
+- `src/lib/client-portal/energy-conversation.ts`: Fixed encouragement intervention detection
+- `src/lib/client-portal/craving-service.ts`: Fixed RATE_RESULT intervention detection
 
-**Key Lesson**: Don't overcomplicate state detection. The presence of `secondaryIntervention` in the conversation function parameters is the perfect indicator that we're in secondary intervention flow.
+**Key Lesson**: Conversation history analysis with simple text matching ("Another idea") is effective for detecting secondary intervention flows across different conversation steps.
 
 ### Energy Boost "No Interventions" Bug Resolution
 **Root Cause**: Missing RLS (Row Level Security) policy prevented client portal from accessing `energy_interventions` table.
@@ -264,11 +255,7 @@ const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT,
 - Client ID was correct, database queries worked in backend, but frontend received empty results
 - Craving SOS worked perfectly with identical code structure
 
-**Solution**: Added missing RLS policy:
-```sql
-CREATE POLICY "client_portal_read_energy_interventions" ON "public"."energy_interventions"
-AS PERMISSIVE FOR SELECT TO public USING (true);
-```
+**Solution**: Added missing RLS policy to allow client portal read access to energy_interventions table.
 
 **Key Lesson**: When client portal queries return empty results but backend queries succeed, always check RLS policies first. Client portal runs with anonymous/public access and needs explicit read permissions for each table.
 
