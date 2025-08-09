@@ -364,12 +364,25 @@ export async function getEnergyResponse({
       console.log('  secondaryIntervention:', secondaryIntervention?.name);
       console.log('  conversationHistory last 2:', conversationHistory?.slice(-2).map(m => ({ sender: m.sender, text: m.text.slice(0, 50) })));
       
-      // SIMPLE LOGIC: If secondaryIntervention exists, we just came from secondary intervention flow
-      // (because secondary is only set when "Another idea" was clicked and secondary was presented)
-      const interventionForEncouragement = secondaryIntervention || primaryIntervention;
-      console.log('✅ Using intervention for encouragement:', interventionForEncouragement?.name);
+      // SIMPLE LOGIC: Use primary intervention UNLESS we can prove we're in secondary flow
+      // Only use secondary if the user previously clicked "Another idea" in this conversation
+      let interventionForEncouragement = primaryIntervention;
       
-      console.log('  → Using intervention for encouragement:', interventionForEncouragement?.name);
+      if (conversationHistory && secondaryIntervention) {
+        // Look for "Another idea" in the client's message history
+        const clientMessages = conversationHistory.filter(m => m.sender === 'client');
+        const hasClickedAnotherIdea = clientMessages.some(msg => msg.text.includes('Another idea'));
+        
+        if (hasClickedAnotherIdea) {
+          // User clicked "Another idea" at some point, so we're in secondary intervention flow
+          interventionForEncouragement = secondaryIntervention;
+          console.log('✅ Found "Another idea" in history - using secondary intervention');
+        } else {
+          console.log('✅ No "Another idea" found - using primary intervention');
+        }
+      }
+      
+      console.log('✅ Final intervention for encouragement:', interventionForEncouragement?.name);
       const encouragementText = await getResponseText(ConversationStep.ENCOURAGEMENT, interventionForEncouragement ? [interventionForEncouragement] : []);
       return {
         response: {

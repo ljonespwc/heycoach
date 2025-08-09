@@ -639,6 +639,17 @@ export class CravingService {
   }): void {
     setTimeout(async () => {
       const followUpConversationHistory = await this.getConversationHistory();
+      
+      // Determine which intervention was actually tried based on conversation history
+      let actualInterventionTried = this.primaryIntervention;
+      if (followUpConversationHistory && this.secondaryIntervention) {
+        const clientMessages = followUpConversationHistory.filter(m => m.sender === 'client');
+        const hasClickedAnotherIdea = clientMessages.some(msg => msg.text.includes('Another idea'));
+        if (hasClickedAnotherIdea) {
+          actualInterventionTried = this.secondaryIntervention;
+        }
+      }
+      
       const followUpRes = await getCoachResponse({
         currentStep: ConversationStep.RATE_RESULT,
         clientName,
@@ -653,6 +664,7 @@ export class CravingService {
         conversationHistory: followUpConversationHistory,
         primaryIntervention: this.primaryIntervention || undefined,
         secondaryIntervention: this.secondaryIntervention || undefined,
+        interventions: actualInterventionTried ? [actualInterventionTried] : undefined,
       });
       
       await onMessage(followUpRes.response);
