@@ -2,7 +2,7 @@
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getActiveClientInterventions, updateIncidentByClientId } from './craving-db';
 import { generateCoachResponse } from '../openai/coach-ai';
-import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation, getPreviousEffectiveness } from './smart-interventions';
 
 export interface Option {
   emoji?: string;
@@ -222,6 +222,14 @@ export async function getCoachResponse({
       const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
       
       try {
+        // Get previous effectiveness data
+        const previousEffectiveness = await getPreviousEffectiveness(clientId, {
+          cravingType: selectedFood,
+          location,
+          trigger,
+          interventionType: 'craving'
+        });
+
         const smartSelection = await selectSmartInterventions({
           clientName,
           cravingType: selectedFood || 'food',
@@ -231,7 +239,8 @@ export async function getCoachResponse({
           timeOfDay,
           dayOfWeek,
           interventionType: 'craving',
-          availableInterventions: allInterventions
+          availableInterventions: allInterventions,
+          previousEffectiveness
         });
 
         const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [smartSelection.primaryIntervention]);

@@ -2,7 +2,7 @@
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getActiveEnergyInterventions, updateMovementIncidentByClientId } from './energy-db';
 import { generateCoachResponse } from '../openai/coach-ai';
-import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation, getPreviousEffectiveness } from './smart-interventions';
 
 export interface Option {
   emoji?: string;
@@ -217,6 +217,14 @@ export async function getEnergyResponse({
           // Perform smart selection using current context
           const contextInfo = getCurrentContextInfo();
 
+          // Get previous effectiveness data
+          const previousEffectiveness = await getPreviousEffectiveness(clientId, {
+            cravingType: selectedBlocker,
+            location,
+            trigger: approach,
+            interventionType: 'energy'
+          });
+
           const smartSelection = await selectSmartInterventions({
             clientName,
             cravingType: selectedBlocker || '',
@@ -226,7 +234,8 @@ export async function getEnergyResponse({
             timeOfDay: contextInfo.timeOfDay,
             dayOfWeek: contextInfo.dayOfWeek,
             interventionType: 'energy',
-            availableInterventions: locationFilteredInterventions
+            availableInterventions: locationFilteredInterventions,
+            previousEffectiveness
           });
 
           if (smartSelection) {

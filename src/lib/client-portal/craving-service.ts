@@ -9,8 +9,9 @@ import {
   MessageType
 } from './craving-types';
 import * as CravingDB from './craving-db';
+import { updateClientInterventionEffectiveness, incrementInterventionUsage } from './craving-db';
 import { getCoachResponse, type CoachResponse, type Option } from './craving-conversation';
-import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, getPreviousEffectiveness } from './smart-interventions';
 
 export type { Message } from './craving-types';
 export { ConversationStep } from './craving-types';
@@ -302,6 +303,29 @@ export class CravingService {
     return CravingDB.updateIncident(this.incidentId, updates);
   }
 
+  // Get the current incident's intervention ID
+  private async getCurrentInterventionId(): Promise<string | null> {
+    if (!this.incidentId) return null;
+    
+    try {
+      const { data, error } = await this.supabase
+        .from('craving_incidents')
+        .select('intervention_id')
+        .eq('id', this.incidentId)
+        .single();
+        
+      if (error || !data) {
+        console.log('No intervention_id found for current incident');
+        return null;
+      }
+      
+      return data.intervention_id;
+    } catch (e) {
+      console.error('Error getting current intervention ID:', e);
+      return null;
+    }
+  }
+
   // Get conversation history for AI context
   private async getConversationHistory(): Promise<Message[]> {
     try {
@@ -330,6 +354,14 @@ export class CravingService {
 
       const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
       
+      // Get previous effectiveness data
+      const previousEffectiveness = await getPreviousEffectiveness(this.clientId || '', {
+        cravingType: this.selectedFood || undefined,
+        location: this.location || undefined,
+        trigger: this.trigger || undefined,
+        interventionType: 'craving'
+      });
+      
       const smartSelection = await selectSmartInterventions({
         clientName: clientName || 'Client', // Use client name with fallback
         cravingType: this.selectedFood,
@@ -339,7 +371,8 @@ export class CravingService {
         timeOfDay,
         dayOfWeek,
         interventionType: 'craving',
-        availableInterventions: allInterventions
+        availableInterventions: allInterventions,
+        previousEffectiveness
       });
 
       this.primaryIntervention = smartSelection.primaryIntervention;
@@ -438,6 +471,14 @@ export class CravingService {
               result_rating: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
+            
+            // Also update client_interventions effectiveness rating
+            const interventionId = await this.getCurrentInterventionId();
+            if (interventionId && this.clientId) {
+              console.log('Updating intervention effectiveness:', { interventionId, resultRating });
+              await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+            }
+            
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {
@@ -461,10 +502,23 @@ export class CravingService {
               const selectedIntervention = interventions[0];
               if (selectedIntervention?.id) {
                 updatedChosenIntervention = selectedIntervention;
+                
+                // Detect if this is accepting the secondary intervention
+                // This happens when interventions array has only 1 item and it matches the secondary intervention
+                if (interventions.length === 1 && this.secondaryIntervention && selectedIntervention.id === this.secondaryIntervention.id) {
+                  (updatedChosenIntervention as Intervention & { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted = true;
+                  console.log('✅ Marked as secondary intervention acceptance:', selectedIntervention.name);
+                }
+                
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
                   tacticUsed: selectedIntervention.name
                 });
+                
+                // Track intervention usage
+                if (this.clientId) {
+                  await incrementInterventionUsage(this.clientId, selectedIntervention.id);
+                }
               }
             }
           } else {
@@ -476,6 +530,11 @@ export class CravingService {
                 interventionId: intervention.id,
                 tacticUsed: intervention.name
               });
+              
+              // Track intervention usage
+              if (this.clientId) {
+                await incrementInterventionUsage(this.clientId, intervention.id);
+              }
             }
           }
           break;
@@ -530,10 +589,23 @@ export class CravingService {
               const selectedIntervention = interventions[0];
               if (selectedIntervention?.id) {
                 updatedChosenIntervention = selectedIntervention;
+                
+                // Detect if this is accepting the secondary intervention
+                // This happens when interventions array has only 1 item and it matches the secondary intervention
+                if (interventions.length === 1 && this.secondaryIntervention && selectedIntervention.id === this.secondaryIntervention.id) {
+                  (updatedChosenIntervention as Intervention & { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted = true;
+                  console.log('✅ Marked as secondary intervention acceptance (text):', selectedIntervention.name);
+                }
+                
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
                   tacticUsed: selectedIntervention.name
                 });
+                
+                // Track intervention usage
+                if (this.clientId) {
+                  await incrementInterventionUsage(this.clientId, selectedIntervention.id);
+                }
               }
             }
           } else if (lowerInput === "no" || lowerInput === "n" || lowerInput.includes("another") || lowerInput.includes("different")) {
@@ -557,6 +629,14 @@ export class CravingService {
               result_rating: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
+            
+            // Also update client_interventions effectiveness rating
+            const interventionId = await this.getCurrentInterventionId();
+            if (interventionId && this.clientId) {
+              console.log('Updating intervention effectiveness:', { interventionId, resultRating });
+              await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+            }
+            
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {

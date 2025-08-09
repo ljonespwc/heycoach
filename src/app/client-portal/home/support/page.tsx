@@ -140,7 +140,7 @@ export default function UnifiedSupportPage() {
     return () => {
       mounted = false;
     }
-  }, [])
+  }, [isInitialized])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

@@ -63,16 +63,131 @@ export async function getPreviousEffectiveness(clientId: string, context: {
   cravingType?: string;
   location?: string;
   trigger?: string;
+  interventionType?: 'craving' | 'energy';
 }): Promise<Array<{
   interventionId: string;
   interventionName: string;
   effectiveness: number;
   context: string;
 }>> {
-  // TODO: Implement database query to get historical effectiveness
-  // For now, return empty array
-  console.log('Getting previous effectiveness for client:', clientId, context);
-  return [];
+  if (!clientId) return [];
+  
+  try {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    
+    const isEnergyContext = context.interventionType === 'energy';
+    
+    // Query client_interventions with effectiveness ratings
+    const { data: clientInterventions, error: clientError } = await supabase
+      .from('client_interventions')
+      .select(`
+        intervention_id,
+        effectiveness_rating,
+        last_used_at,
+        times_used
+      `)
+      .eq('client_id', clientId)
+      .eq('intervention_type', isEnergyContext ? 'energy' : 'craving')
+      .not('effectiveness_rating', 'is', null)
+      .gte('effectiveness_rating', 1) // Only include rated interventions
+      .order('last_used_at', { ascending: false });
+    
+    if (clientError || !clientInterventions) {
+      console.log('No client interventions with effectiveness data found');
+      return [];
+    }
+
+    // Get intervention names and match with similar contexts
+    const interventionIds = clientInterventions.map(ci => ci.intervention_id);
+    
+    if (interventionIds.length === 0) return [];
+    
+    // Get intervention names from the appropriate intervention table
+    const interventionTable = isEnergyContext ? 'energy_interventions' : 'craving_interventions';
+    const { data: interventions, error: interventionError } = await supabase
+      .from(interventionTable)
+      .select('id, name, description')
+      .in('id', interventionIds);
+      
+    if (interventionError || !interventions) {
+      console.log('Error fetching intervention details');
+      return [];
+    }
+    
+    // Get recent incident data for contextual matching
+    const incidentTable = isEnergyContext ? 'movement_incidents' : 'craving_incidents';
+    const contextField = isEnergyContext ? 'blocker_type' : 'trigger_food';
+    const locationField = 'location';
+    
+    const { data: recentIncidents } = await supabase
+      .from(incidentTable)
+      .select(`
+        intervention_id,
+        ${contextField},
+        ${locationField},
+        context,
+        created_at
+      `)
+      .eq('client_id', clientId)
+      .not('intervention_id', 'is', null)
+      .in('intervention_id', interventionIds)
+      .order('created_at', { ascending: false })
+      .limit(50); // Get recent usage contexts
+    
+    // Build effectiveness data with context matching
+    const effectivenessData = clientInterventions
+      .map(clientIntervention => {
+        const intervention = interventions.find(i => i.id === clientIntervention.intervention_id);
+        if (!intervention) return null;
+        
+        // Find related incidents for context
+        const relatedIncidents = recentIncidents?.filter(
+          inc => inc.intervention_id === clientIntervention.intervention_id
+        ) || [];
+        
+        // Build context description
+        let contextDescription = '';
+        if (relatedIncidents.length > 0) {
+          const incident = relatedIncidents[0]; // Most recent
+          const contexts = [];
+          
+          const contextValue = isEnergyContext ? 
+            (incident as Record<string, unknown>).blocker_type : 
+            (incident as Record<string, unknown>).trigger_food;
+          
+          if (contextValue) {
+            contexts.push(isEnergyContext ? `${contextValue} blocker` : `${contextValue} craving`);
+          }
+          if (incident.location) {
+            contexts.push(`at ${incident.location}`);
+          }
+          if (incident.context) {
+            contexts.push(incident.context);
+          }
+          
+          contextDescription = contexts.join(', ') || 'general usage';
+        } else {
+          contextDescription = 'general usage';
+        }
+        
+        return {
+          interventionId: clientIntervention.intervention_id,
+          interventionName: intervention.name,
+          effectiveness: clientIntervention.effectiveness_rating,
+          context: contextDescription
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => b.effectiveness - a.effectiveness); // Sort by effectiveness descending
+    
+    console.log(`Found ${effectivenessData.length} previous effectiveness records for client:`, clientId);
+    return effectivenessData;
+    
+  } catch (error) {
+    console.error('Error getting previous effectiveness:', error);
+    return [];
+  }
 }
 
 /**

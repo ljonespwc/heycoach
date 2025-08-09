@@ -224,7 +224,7 @@ export async function updateMovementIncident(
     if (updates.activityCompleted !== undefined) updateObj.activity_completed = updates.activityCompleted;
     if (updates.activityType !== undefined) updateObj.activity_type = updates.activityType;
     if (updates.durationMinutes !== undefined) updateObj.duration_minutes = updates.durationMinutes;
-    if (updates.postEnergyLevel !== undefined) updateObj.post_energy_level = updates.postEnergyLevel;
+    if (updates.result_rating !== undefined) updateObj.result_rating = updates.result_rating;
     if (updates.interventionId && !updates.interventionId.startsWith('fallback-')) {
       updateObj.intervention_id = updates.interventionId;
     }
@@ -323,6 +323,104 @@ export async function hasActiveMovementIncident(clientId: string): Promise<{ has
   } catch (error) {
     console.error('❌ hasActiveMovementIncident failed:', error);
     return { hasActive: false };
+  }
+}
+
+// Update client_interventions effectiveness rating when intervention is rated
+export async function updateClientInterventionEffectiveness(
+  clientId: string, 
+  interventionId: string, 
+  effectivenessRating: number
+): Promise<boolean> {
+  if (!clientId || !interventionId || effectivenessRating < 1 || effectivenessRating > 10) {
+    console.error('❌ Invalid parameters for updating intervention effectiveness');
+    return false;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('client_interventions')
+      .update({
+        effectiveness_rating: effectivenessRating,
+        last_used_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('client_id', clientId)
+      .eq('intervention_id', interventionId)
+      .eq('intervention_type', 'energy');
+
+    if (error) {
+      console.error('❌ Error updating client intervention effectiveness:', error);
+      return false;
+    }
+
+    console.log('✅ Updated intervention effectiveness:', { clientId, interventionId, effectivenessRating });
+    return true;
+  } catch (e) {
+    console.error('❌ Exception updating client intervention effectiveness:', e);
+    return false;
+  }
+}
+
+// Increment times_used counter when intervention is suggested/used
+export async function incrementInterventionUsage(
+  clientId: string, 
+  interventionId: string
+): Promise<boolean> {
+  if (!clientId || !interventionId) {
+    console.error('❌ Invalid parameters for incrementing intervention usage');
+    return false;
+  }
+
+  try {
+    // Use PostgreSQL's increment functionality
+    const { error } = await supabase.rpc('increment_intervention_usage', {
+      p_client_id: clientId,
+      p_intervention_id: interventionId,
+      p_intervention_type: 'energy'
+    });
+
+    if (error) {
+      // Fallback: Manual increment if RPC doesn't exist
+      console.log('RPC not found, using manual increment...');
+      
+      const { data, error: selectError } = await supabase
+        .from('client_interventions')
+        .select('times_used')
+        .eq('client_id', clientId)
+        .eq('intervention_id', interventionId)
+        .eq('intervention_type', 'energy')
+        .single();
+
+      if (selectError) {
+        console.error('❌ Error fetching current usage count:', selectError);
+        return false;
+      }
+
+      const newCount = (data?.times_used || 0) + 1;
+      
+      const { error: updateError } = await supabase
+        .from('client_interventions')
+        .update({
+          times_used: newCount,
+          last_used_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('client_id', clientId)
+        .eq('intervention_id', interventionId)
+        .eq('intervention_type', 'energy');
+
+      if (updateError) {
+        console.error('❌ Error updating intervention usage count:', updateError);
+        return false;
+      }
+    }
+
+    console.log('✅ Incremented intervention usage:', { clientId, interventionId });
+    return true;
+  } catch (e) {
+    console.error('❌ Exception incrementing intervention usage:', e);
+    return false;
   }
 }
 

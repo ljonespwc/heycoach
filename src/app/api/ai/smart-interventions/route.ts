@@ -113,7 +113,7 @@ ${isEnergyContext ?
 - **Location**: All provided interventions are already location-appropriate for "${context.location}"
 - **${isEnergyContext ? 'Goal/preference' : 'Trigger type'}**: ${isEnergyContext ? 'Different activity preferences (quick boost, light movement, full workout) need different approaches' : 'Different triggers (stress, boredom, habit, seeing food) respond to different approaches'}
 - **Time of day**: Energy levels and appropriate activities vary by time (late night = quieter strategies)
-- **Previous effectiveness**: Prioritize interventions that have worked well in similar contexts
+- **Previous effectiveness**: STRONGLY prioritize interventions with high effectiveness ratings (8+/10) from similar contexts. Consider interventions with 6-7/10 as secondary options. Avoid interventions with effectiveness below 5/10 unless no alternatives exist
 - **Intervention categories**: Balance different types (physical, mental, behavioral, etc.)
 - **Complementary strategies**: Choose secondary that uses different mechanisms than primary
 
@@ -176,7 +176,7 @@ IMPORTANT REMINDERS:
 2. Consider the ${isEnergyContext ? `activity goal "${context.trigger}"` : `trigger "${context.trigger}"`} - ${isEnergyContext ? 'match intervention intensity to available time and desired outcome' : 'match intervention type to trigger (boredom→engagement, stress→calming, etc.)'}
 3. Time context matters - "${context.timeOfDay}" affects energy levels and appropriate activities
 4. ${isEnergyContext ? `Energy level ${context.intensity}/10 informs how gentle or intensive the intervention should be` : `Intensity ${context.intensity}/10 informs urgency of intervention needed`}
-5. Prioritize interventions with proven effectiveness in similar contexts
+5. **CRITICAL**: When effectiveness data exists, prioritize interventions with ratings ≥8/10. Only choose lower-rated interventions if no high-effectiveness options are available or contextually appropriate
 6. Choose complementary primary/secondary interventions using different mechanisms`;
 
     const response = await openai.chat.completions.create({

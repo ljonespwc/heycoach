@@ -80,3 +80,8 @@ All tables protected with Row Level Security. Coaches access own clients only. C
 ## Authentication
 - **Coaches**: Supabase Auth with middleware protection
 - **Clients**: Token-based access, no accounts required
+
+## Recent Fixes
+
+### Aug 9, 2025 - Fixed Intervention Tracking Mismatch
+Fixed issue where encouragement step mentioned wrong intervention (secondary instead of primary). Problem was services weren't setting `isSecondInterventionAccepted` flag when user accepted secondary intervention after "Another idea". Added detection logic in both `craving-service.ts` and `energy-service.ts` to properly flag secondary intervention acceptance based on intervention array length and ID matching.

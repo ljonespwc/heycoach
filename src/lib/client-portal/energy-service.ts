@@ -9,8 +9,9 @@ import {
   MessageType
 } from './craving-types';
 import * as EnergyDB from './energy-db';
+import { updateClientInterventionEffectiveness, incrementInterventionUsage } from './energy-db';
 import { getEnergyResponse, type EnergyResponse, type Option } from './energy-conversation';
-import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, getPreviousEffectiveness } from './smart-interventions';
 
 export type { Message } from './craving-types';
 export { ConversationStep } from './craving-types';
@@ -289,6 +290,29 @@ export class EnergyService {
     return EnergyDB.updateMovementIncident(this.incidentId, updates);
   }
 
+  // Get the current incident's intervention ID
+  private async getCurrentInterventionId(): Promise<string | null> {
+    if (!this.incidentId) return null;
+    
+    try {
+      const { data, error } = await this.supabase
+        .from('movement_incidents')
+        .select('intervention_id')
+        .eq('id', this.incidentId)
+        .single();
+        
+      if (error || !data) {
+        console.log('No intervention_id found for current incident');
+        return null;
+      }
+      
+      return data.intervention_id;
+    } catch (e) {
+      console.error('Error getting current intervention ID:', e);
+      return null;
+    }
+  }
+
   // Get conversation history for AI context
   private async getConversationHistory(): Promise<Message[]> {
     try {
@@ -317,6 +341,14 @@ export class EnergyService {
 
       const { timeOfDay, dayOfWeek } = getCurrentContextInfo();
       
+      // Get previous effectiveness data
+      const previousEffectiveness = await getPreviousEffectiveness(this.clientId || '', {
+        cravingType: this.selectedBlocker || undefined,
+        location: this.location || undefined,
+        trigger: this.approach || undefined,
+        interventionType: 'energy'
+      });
+      
       const smartSelection = await selectSmartInterventions({
         clientName: clientName || 'Client', // Use client name with fallback
         cravingType: this.selectedBlocker,
@@ -326,7 +358,8 @@ export class EnergyService {
         timeOfDay,
         dayOfWeek,
         interventionType: 'energy',
-        availableInterventions: allInterventions
+        availableInterventions: allInterventions,
+        previousEffectiveness
       });
 
       this.primaryIntervention = smartSelection.primaryIntervention;
@@ -420,11 +453,20 @@ export class EnergyService {
           const resultRating = parseInt(cleanValue, 10);
           console.log('Energy RATE_RESULT: cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
-            console.log('Updating movement incident with post_energy_level:', resultRating);
+            console.log('Updating movement incident with result_rating:', resultRating);
             await this.updateIncident({ 
-              postEnergyLevel: resultRating,
+              result_rating: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
+            
+            // Also update client_interventions effectiveness rating
+            // For energy: higher post-energy = more effective intervention
+            const interventionId = await this.getCurrentInterventionId();
+            if (interventionId && this.clientId) {
+              console.log('Updating intervention effectiveness:', { interventionId, resultRating });
+              await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+            }
+            
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {
@@ -448,10 +490,23 @@ export class EnergyService {
               const selectedIntervention = interventions[0];
               if (selectedIntervention?.id) {
                 updatedChosenIntervention = selectedIntervention;
+                
+                // Detect if this is accepting the secondary intervention
+                // This happens when interventions array has only 1 item and it matches the secondary intervention
+                if (interventions.length === 1 && this.secondaryIntervention && selectedIntervention.id === this.secondaryIntervention.id) {
+                  (updatedChosenIntervention as Intervention & { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted = true;
+                  console.log('✅ Marked as secondary intervention acceptance:', selectedIntervention.name);
+                }
+                
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
                   activityType: selectedIntervention.name
                 });
+                
+                // Track intervention usage
+                if (this.clientId) {
+                  await incrementInterventionUsage(this.clientId, selectedIntervention.id);
+                }
               }
             }
           } else {
@@ -463,6 +518,11 @@ export class EnergyService {
                 interventionId: intervention.id,
                 activityType: intervention.name
               });
+              
+              // Track intervention usage
+              if (this.clientId) {
+                await incrementInterventionUsage(this.clientId, intervention.id);
+              }
             }
           }
           break;
@@ -510,10 +570,23 @@ export class EnergyService {
               const selectedIntervention = interventions[0];
               if (selectedIntervention?.id) {
                 updatedChosenIntervention = selectedIntervention;
+                
+                // Detect if this is accepting the secondary intervention
+                // This happens when interventions array has only 1 item and it matches the secondary intervention
+                if (interventions.length === 1 && this.secondaryIntervention && selectedIntervention.id === this.secondaryIntervention.id) {
+                  (updatedChosenIntervention as Intervention & { isSecondInterventionAccepted?: boolean }).isSecondInterventionAccepted = true;
+                  console.log('✅ Marked as secondary intervention acceptance (text):', selectedIntervention.name);
+                }
+                
                 await this.updateIncident({
                   interventionId: selectedIntervention.id,
                   activityType: selectedIntervention.name
                 });
+                
+                // Track intervention usage
+                if (this.clientId) {
+                  await incrementInterventionUsage(this.clientId, selectedIntervention.id);
+                }
               }
             }
           } else if (lowerInput === "no" || lowerInput === "n" || lowerInput.includes("another") || lowerInput.includes("different")) {
@@ -532,11 +605,20 @@ export class EnergyService {
           const resultRating = parseInt(cleanValue, 10);
           console.log('Energy RATE_RESULT (text): cleanValue =', cleanValue, 'resultRating =', resultRating);
           if (!isNaN(resultRating)) {
-            console.log('Updating movement incident with post_energy_level:', resultRating);
+            console.log('Updating movement incident with result_rating:', resultRating);
             await this.updateIncident({ 
-              postEnergyLevel: resultRating,
+              result_rating: resultRating,
               resolvedAt: new Date() // Mark as resolved when rating is provided
             });
+            
+            // Also update client_interventions effectiveness rating
+            // For energy: higher post-energy = more effective intervention
+            const interventionId = await this.getCurrentInterventionId();
+            if (interventionId && this.clientId) {
+              console.log('Updating intervention effectiveness:', { interventionId, resultRating });
+              await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+            }
+            
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
           } else {

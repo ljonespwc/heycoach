@@ -48,7 +48,7 @@ export interface MovementIncident {
   notifyCoach?: boolean;
   dayOfWeek?: number;
   timeOfDay?: string;
-  postEnergyLevel?: number;
+  result_rating?: number;
 }
 
 export interface Coach {

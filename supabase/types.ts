@@ -253,7 +253,7 @@ export interface Database {
           notify_coach: boolean | null
           day_of_week: number | null
           time_of_day: string | null
-          post_energy_level: number | null
+          result_rating: number | null
         }
         Insert: {
           id?: string
@@ -268,7 +268,7 @@ export interface Database {
           notify_coach?: boolean | null
           day_of_week?: number | null
           time_of_day?: string | null
-          post_energy_level?: number | null
+          result_rating?: number | null
         }
         Update: {
           id?: string
@@ -283,7 +283,7 @@ export interface Database {
           notify_coach?: boolean | null
           day_of_week?: number | null
           time_of_day?: string | null
-          post_energy_level?: number | null
+          result_rating?: number | null
         }
       }
     }

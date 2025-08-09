@@ -122,7 +122,8 @@ CREATE TABLE IF NOT EXISTS movement_incidents (
     notify_coach boolean DEFAULT false,
     day_of_week integer,
     time_of_day time without time zone,
-    post_energy_level integer
+    result_rating integer,
+    resolved_at timestamp with time zone
 );
 
 -- Table to store messages within a session
