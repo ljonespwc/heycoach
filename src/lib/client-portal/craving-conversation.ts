@@ -2,7 +2,7 @@
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getActiveClientInterventions, updateIncidentByClientId } from './craving-db';
 import { generateCoachResponse } from '../openai/coach-ai';
-import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation } from './smart-interventions';
 
 export interface Option {
   emoji?: string;
@@ -118,6 +118,11 @@ export async function getCoachResponse({
           { emoji: '🍸', name: 'Drink' },
           { emoji: '🍦', name: 'Ice Cream' },
           { emoji: '🍪', name: 'Cookies' },
+          { emoji: '🍟', name: 'Chips/Fries' },
+          { emoji: '🍰', name: 'Cake/Dessert' },
+          { emoji: '🍞', name: 'Bread/Carbs' },
+          { emoji: '🍭', name: 'Candy/Sweets' },
+          { emoji: '🍔', name: 'Fast Food' },
         ]
       };
     case ConversationStep.GAUGE_INTENSITY:
@@ -148,6 +153,9 @@ export async function getCoachResponse({
           { emoji: '🚗', name: 'Car' },
           { emoji: '🛒', name: 'Store' },
           { emoji: '🍽️', name: 'Restaurant' },
+          { emoji: '🏋️', name: 'Gym' },
+          { emoji: '👫', name: "Friend's house" },
+          { emoji: '🏨', name: 'Hotel/Travel' },
         ]
       };
     case ConversationStep.IDENTIFY_TRIGGER:
@@ -166,6 +174,9 @@ export async function getCoachResponse({
           { emoji: '👀', name: 'Saw food' },
           { emoji: '🔁', name: 'Habit' },
           { emoji: '👥', name: 'Social pressure' },
+          { emoji: '🎉', name: 'Celebration' },
+          { emoji: '🌙', name: 'Late night' },
+          { emoji: '🍷', name: 'Social event' },
         ]
       };
     case ConversationStep.SUGGEST_TACTIC:
@@ -191,8 +202,9 @@ export async function getCoachResponse({
       
       // Fallback to old behavior if no smart selection available (shouldn't happen)
       const allInterventions = await getActiveClientInterventions(clientId, 25);
+      const locationFilteredInterventions = filterInterventionsByLocation(allInterventions, location || 'Home');
       
-      if (allInterventions.length === 0) {
+      if (locationFilteredInterventions.length === 0) {
         // No interventions available - return error message
         return {
           response: {
@@ -241,7 +253,7 @@ export async function getCoachResponse({
       } catch (error) {
         console.error('❌ Smart intervention selection failed, using first available:', error);
         // Fallback to first intervention if smart selection fails
-        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [allInterventions[0]]);
+        const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [locationFilteredInterventions[0]]);
         return {
           response: {
             id: `coach-${now.getTime()}`,
@@ -255,7 +267,7 @@ export async function getCoachResponse({
             { emoji: '👍', name: "Yes, I'll try it" },
             { emoji: '💡', name: "Another idea" }
           ],
-          interventions: [allInterventions[0]]
+          interventions: [locationFilteredInterventions[0]]
         };
       }
     case ConversationStep.ENCOURAGEMENT:
@@ -307,7 +319,8 @@ export async function getCoachResponse({
         
         // Fallback - get all interventions and pick a different one
         const allInterventions = await getActiveClientInterventions(clientId, 25);
-        const filteredInterventions = allInterventions.filter(i => 
+        const locationFilteredInterventions = filterInterventionsByLocation(allInterventions, location || 'Home');
+        const filteredInterventions = locationFilteredInterventions.filter(i => 
           !primaryIntervention || i.id !== primaryIntervention.id
         );
         

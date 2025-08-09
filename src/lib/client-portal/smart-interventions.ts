@@ -76,6 +76,40 @@ export async function getPreviousEffectiveness(clientId: string, context: {
 }
 
 /**
+ * Filter interventions by location appropriateness
+ * Includes interventions that are either location-specific OR universal
+ */
+export function filterInterventionsByLocation(interventions: Intervention[], location: string): Intervention[] {
+  // Map location names to database tag values
+  const locationMapping: { [key: string]: string } = {
+    'Home': 'home',
+    'Work': 'work', 
+    'Car': 'car',
+    'Store': 'store',
+    'Restaurant': 'restaurant',
+    'Gym': 'gym',
+    "Friend's house": 'social',
+    'Hotel/Travel': 'travel',
+    'Outdoors': 'outdoors',
+    'Car/Transit': 'car',
+    'Public space': 'public'
+  };
+
+  const locationTag = locationMapping[location] || 'universal';
+  
+  return interventions.filter(intervention => {
+    // If no context_tags, assume it works everywhere (legacy data)
+    if (!intervention.context_tags || intervention.context_tags.length === 0) {
+      return true;
+    }
+    
+    // Include if intervention is tagged for this location OR is universal
+    return intervention.context_tags.includes(locationTag) || 
+           intervention.context_tags.includes('universal');
+  });
+}
+
+/**
  * Format current date/time info for intervention selection
  */
 export function getCurrentContextInfo(): { timeOfDay: string; dayOfWeek: string } {

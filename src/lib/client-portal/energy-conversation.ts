@@ -2,7 +2,7 @@
 import { ConversationStep, Message, Intervention } from './craving-types';
 import { getActiveEnergyInterventions, updateMovementIncidentByClientId } from './energy-db';
 import { generateCoachResponse } from '../openai/coach-ai';
-import { selectSmartInterventions, getCurrentContextInfo } from './smart-interventions';
+import { selectSmartInterventions, getCurrentContextInfo, filterInterventionsByLocation } from './smart-interventions';
 
 export interface Option {
   emoji?: string;
@@ -126,7 +126,10 @@ export async function getEnergyResponse({
           { emoji: '😑', name: 'Not motivated' },
           { emoji: '🎯', name: "Don't know what to do" },
           { emoji: '😰', name: 'Feeling overwhelmed' },
-          { emoji: '🚫', name: "Don't feel like it" }
+          { emoji: '🚫', name: "Don't feel like it" },
+          { emoji: '🌧️', name: 'Bad weather' },
+          { emoji: '🏗️', name: 'Equipment issues' },
+          { emoji: '🤒', name: 'Not feeling well' }
         ]
       };
 
@@ -208,8 +211,9 @@ export async function getEnergyResponse({
       try {
         console.log('Getting all client interventions for smart selection...');
         const allInterventions = await getActiveEnergyInterventions(clientId);
+        const locationFilteredInterventions = filterInterventionsByLocation(allInterventions, location || 'Home');
 
-        if (allInterventions.length > 0) {
+        if (locationFilteredInterventions.length > 0) {
           // Perform smart selection using current context
           const contextInfo = getCurrentContextInfo();
 
@@ -222,7 +226,7 @@ export async function getEnergyResponse({
             timeOfDay: contextInfo.timeOfDay,
             dayOfWeek: contextInfo.dayOfWeek,
             interventionType: 'energy',
-            availableInterventions: allInterventions
+            availableInterventions: locationFilteredInterventions
           });
 
           if (smartSelection) {
@@ -246,8 +250,8 @@ export async function getEnergyResponse({
         }
 
         // Final fallback to first available intervention
-        if (allInterventions.length > 0) {
-          const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [allInterventions[0]]);
+        if (locationFilteredInterventions.length > 0) {
+          const tacticText = await getResponseText(ConversationStep.SUGGEST_TACTIC, [locationFilteredInterventions[0]]);
           return {
             response: {
               id: `coach-${now.getTime()}`,
@@ -261,7 +265,7 @@ export async function getEnergyResponse({
               { emoji: '👍', name: "Yes, I'll try it" },
               { emoji: '💡', name: "Another idea" }
             ],
-            interventions: [allInterventions[0]]
+            interventions: [locationFilteredInterventions[0]]
           };
         }
 
@@ -336,7 +340,8 @@ export async function getEnergyResponse({
         
         // Fallback - get all interventions and pick a different one
         const allInterventions = await getActiveEnergyInterventions(clientId, 25);
-        const filteredInterventions = allInterventions.filter(i => 
+        const locationFilteredInterventions = filterInterventionsByLocation(allInterventions, location || 'Home');
+        const filteredInterventions = locationFilteredInterventions.filter(i => 
           !primaryIntervention || i.id !== primaryIntervention.id
         );
         

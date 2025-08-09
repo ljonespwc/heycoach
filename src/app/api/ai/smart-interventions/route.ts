@@ -48,14 +48,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (context.availableInterventions.length === 1) {
+    // Filter interventions by location before processing
+    const locationMapping: { [key: string]: string } = {
+      'Home': 'home',
+      'Work': 'work', 
+      'Car': 'car',
+      'Store': 'store',
+      'Restaurant': 'restaurant',
+      'Gym': 'gym',
+      "Friend's house": 'social',
+      'Hotel/Travel': 'travel',
+      'Outdoors': 'outdoors',
+      'Car/Transit': 'car',
+      'Public space': 'public'
+    };
+
+    const locationTag = locationMapping[context.location] || 'universal';
+    
+    const locationFilteredInterventions = context.availableInterventions.filter(intervention => {
+      // If no context_tags, assume it works everywhere (legacy data)
+      if (!intervention.context_tags || intervention.context_tags.length === 0) {
+        return true;
+      }
+      
+      // Include if intervention is tagged for this location OR is universal
+      return intervention.context_tags.includes(locationTag) || 
+             intervention.context_tags.includes('universal');
+    });
+
+    if (locationFilteredInterventions.length === 0) {
+      return NextResponse.json(
+        { error: `No interventions available for location: ${context.location}` },
+        { status: 400 }
+      );
+    }
+
+    if (locationFilteredInterventions.length === 1) {
       // Only one intervention available - use it for both primary and secondary
       return NextResponse.json({
-        primaryIntervention: context.availableInterventions[0],
-        secondaryIntervention: context.availableInterventions[0],
-        reasoning: "Only one intervention was available, so it was selected for both primary and secondary options."
+        primaryIntervention: locationFilteredInterventions[0],
+        secondaryIntervention: locationFilteredInterventions[0],
+        reasoning: "Only one location-appropriate intervention was available, so it was selected for both primary and secondary options."
       });
     }
+
+    // Update context to use filtered interventions
+    context.availableInterventions = locationFilteredInterventions;
 
     const isEnergyContext = context.interventionType === 'energy';
     
@@ -72,12 +110,7 @@ ${isEnergyContext ?
 - **Activity goal**: Match intervention intensity to client's available time and desired activity level` :
 `- **Craving intensity**: Higher intensity may need more immediate/physical interventions
 - **Food type**: Different cravings may respond better to specific intervention types`}
-- **Location**: CRITICAL - Only select interventions that are feasible in the client's current environment:
-  * Home: All interventions available (${isEnergyContext ? 'exercise space, equipment access' : 'bathroom access, kitchen'}, privacy)
-  * ${isEnergyContext ? 'Gym: Exercise equipment available, focus on structured activities' : 'Restaurant: NO bathroom-based interventions (brushing teeth, mouthwash)'}
-  * Work: Limited privacy and space, ${isEnergyContext ? 'desk-friendly activities, stairs, walking' : 'discreet mental/breathing techniques'}
-  * Car: ${isEnergyContext ? 'Stationary activities only, breathing, stretching (when parked)' : 'NO movement interventions, breathing, mental strategies'}
-  * ${isEnergyContext ? 'Outdoors: Walking, fresh air activities' : 'Public spaces: Discreet interventions only'}
+- **Location**: All provided interventions are already location-appropriate for "${context.location}"
 - **${isEnergyContext ? 'Goal/preference' : 'Trigger type'}**: ${isEnergyContext ? 'Different activity preferences (quick boost, light movement, full workout) need different approaches' : 'Different triggers (stress, boredom, habit, seeing food) respond to different approaches'}
 - **Time of day**: Energy levels and appropriate activities vary by time (late night = quieter strategies)
 - **Previous effectiveness**: Prioritize interventions that have worked well in similar contexts
@@ -139,10 +172,12 @@ ${context.availableInterventions.map(intervention =>
 Select the PRIMARY and SECONDARY interventions that would be most effective for this specific situation.
 
 IMPORTANT REMINDERS:
-1. Location is CRITICAL - reject any intervention that requires equipment/facilities not available at "${context.location}"
+1. All interventions provided are location-appropriate - focus on other selection criteria
 2. Consider the ${isEnergyContext ? `activity goal "${context.trigger}"` : `trigger "${context.trigger}"`} - ${isEnergyContext ? 'match intervention intensity to available time and desired outcome' : 'match intervention type to trigger (boredom→engagement, stress→calming, etc.)'}
 3. Time context matters - "${context.timeOfDay}" affects energy levels and appropriate activities
-4. ${isEnergyContext ? `Energy level ${context.intensity}/10 informs how gentle or intensive the intervention should be` : `Intensity ${context.intensity}/10 informs urgency of intervention needed`}`;
+4. ${isEnergyContext ? `Energy level ${context.intensity}/10 informs how gentle or intensive the intervention should be` : `Intensity ${context.intensity}/10 informs urgency of intervention needed`}
+5. Prioritize interventions with proven effectiveness in similar contexts
+6. Choose complementary primary/secondary interventions using different mechanisms`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",

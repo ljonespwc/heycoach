@@ -17,6 +17,7 @@ export interface Intervention {
   name: string;
   description: string;
   category?: string;
+  context_tags?: string[];
 }
 
 export interface CravingIncident {
