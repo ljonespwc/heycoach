@@ -144,7 +144,6 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       sender_type: message.sender,
       message_text: message.text,
       message_type: message.type,
-      metadata: message.metadata || {},
       created_at: message.timestamp.toISOString()
     };
     console.log('Inserting movement message data:', messageData);
@@ -168,7 +167,6 @@ export async function saveMessage(incidentId: string, message: Omit<Message, 'id
       text: data.message_text,
       type: data.message_type as MessageType,
       timestamp: new Date(data.created_at),
-      metadata: data.metadata
     };
   } catch (e) {
     console.error('❌ saveMessage failed:', e);
@@ -195,7 +193,6 @@ export async function getMessages(incidentId: string): Promise<Message[]> {
       text: msg.message_text as string,
       type: msg.message_type as MessageType,
       timestamp: new Date(msg.created_at as string),
-      metadata: msg.metadata as Record<string, unknown>
     }));
   } catch (e) {
     console.error('❌ getMessages failed:', e);
@@ -223,7 +220,6 @@ export async function updateMovementIncident(
     if (updates.energyLevel !== undefined) updateObj.energy_level = updates.energyLevel;
     if (updates.activityCompleted !== undefined) updateObj.activity_completed = updates.activityCompleted;
     if (updates.activityType !== undefined) updateObj.activity_type = updates.activityType;
-    if (updates.durationMinutes !== undefined) updateObj.duration_minutes = updates.durationMinutes;
     if (updates.result_rating !== undefined) updateObj.result_rating = updates.result_rating;
     if (updates.interventionId && !updates.interventionId.startsWith('fallback-')) {
       updateObj.intervention_id = updates.interventionId;

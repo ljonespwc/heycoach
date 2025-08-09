@@ -85,3 +85,24 @@ All tables protected with Row Level Security. Coaches access own clients only. C
 
 ### Aug 9, 2025 - Fixed Intervention Tracking Mismatch
 Fixed issue where encouragement step mentioned wrong intervention (secondary instead of primary). Problem was services weren't setting `isSecondInterventionAccepted` flag when user accepted secondary intervention after "Another idea". Added detection logic in both `craving-service.ts` and `energy-service.ts` to properly flag secondary intervention acceptance based on intervention array length and ID matching.
+
+### Aug 9, 2025 - Completed Intervention Tracking System
+Created comprehensive RPC functions to fix missing intervention usage and effectiveness tracking:
+
+**Core Tracking Functions:**
+- `increment_intervention_usage()`: Tracks usage counts and timestamps when interventions are suggested/accepted
+- `update_intervention_effectiveness()`: Calculates weighted average effectiveness ratings from client feedback
+
+**Success Rate Calculation Functions:**
+- `update_craving_intervention_success_rates()`: Aggregates effectiveness data across all clients for craving interventions
+- `update_energy_intervention_success_rates()`: Aggregates effectiveness data across all clients for energy interventions  
+- `update_all_intervention_success_rates()`: Convenience function to update both intervention types
+- `update_specific_intervention_success_rate()`: Real-time updates for individual interventions
+
+**Database Impact:**
+- Fixed `client_interventions` table tracking (times_used, effectiveness_rating, last_used_at)
+- Fixed `craving_interventions.success_rate` and `energy_interventions.success_rate` calculation
+- Populated NULL context_tags in default intervention tables to match coach intervention tables
+- System now tracks intervention usage statistics and provides data for AI-powered smart recommendations
+
+**Missing:** Only `movement_incidents.activity_completed` tracking remains unimplemented in conversation flow.

@@ -9,7 +9,6 @@ export interface Message {
   text: string;
   type: MessageType;
   timestamp: Date;
-  metadata?: Record<string, unknown>;
 }
 
 export interface Intervention {
