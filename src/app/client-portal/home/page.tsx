@@ -20,42 +20,26 @@ export default function ClientDashboard() {
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-black">How can we help?</h1>
         <p className="mt-2 text-sm font-medium text-black">
-          Choose an option below to get immediate support
+          Get immediate support when you need it most
         </p>
       </div>
 
-      <div className="grid gap-4">
+      <div className="flex justify-center">
         <button
           onClick={() => {
             const currentToken = getToken();
             if (currentToken) {
-              router.push(`/client-portal/home/craving-sos?token=${currentToken}`);
+              router.push(`/client-portal/home/support?token=${currentToken}`);
             } else {
-              router.push('/client-portal/home/craving-sos');
+              router.push('/client-portal/home/support');
             }
           }}
-          className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
+          className="w-full max-w-md p-8 text-center border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors shadow-sm"
         >
-          <h2 className="text-lg font-bold text-black">🆘 Craving SOS</h2>
-          <p className="mt-2 text-sm font-medium text-black">
-            Get immediate support to manage your cravings
-          </p>
-        </button>
-
-        <button
-          onClick={() => {
-            const currentToken = getToken();
-            if (currentToken) {
-              router.push(`/client-portal/home/energy-boost?token=${currentToken}`);
-            } else {
-              router.push('/client-portal/home/energy-boost');
-            }
-          }}
-          className="p-6 text-left border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
-        >
-          <h2 className="text-lg font-bold text-black">⚡ Energy Boost</h2>
-          <p className="mt-2 text-sm font-medium text-black">
-            Need help with low energy? We&apos;ve got you covered
+          <div className="text-4xl mb-4">💪</div>
+          <h2 className="text-xl font-bold text-black mb-2">Get Support</h2>
+          <p className="text-sm font-medium text-black">
+            Whether you&apos;re dealing with cravings or need an energy boost, we&apos;re here to help
           </p>
         </button>
       </div>

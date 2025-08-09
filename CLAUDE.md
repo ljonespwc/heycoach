@@ -1,330 +1,82 @@
 # HeyCoach - Project Documentation for Claude
 
 ## Overview
-HeyCoach is a Next.js-based fitness coaching platform that provides on-demand support for clients during cravings and motivation slumps. It features a dual-interface system: a coach dashboard and a client portal for real-time intervention delivery.
+HeyCoach is a Next.js-based fitness coaching platform that provides on-demand support for clients during cravings and motivation slumps. It features a coach dashboard and a client portal for real-time intervention delivery.
 
-## Architecture
-
-### Tech Stack
+## Tech Stack
 - **Framework**: Next.js 15.3.1 (App Router)
 - **Runtime**: React 19.0.0
 - **Database**: Supabase (PostgreSQL)
-- **Styling**: Tailwind CSS with custom design system
+- **Styling**: Tailwind CSS
 - **Authentication**: Supabase Auth
-- **State Management**: React Query (@tanstack/react-query)
-- **UI Components**: Headless UI, Heroicons, Lucide React
-- **Toast Notifications**: Sonner
-- **PWA**: next-pwa for mobile app functionality
-- **AI**: OpenAI GPT integration for coach responses
-
-### Project Structure
-```
-src/
-├── app/                          # Next.js App Router
-│   ├── (coach)/                  # Coach dashboard routes
-│   │   ├── clients/              # Client management
-│   │   ├── dashboard/            # Main coach dashboard
-│   │   └── profile/              # Coach profile
-│   ├── api/                      # API routes
-│   │   ├── client-portal/        # Client portal auth
-│   │   ├── clients/              # Client CRUD operations
-│   │   └── profile/              # Profile management
-│   ├── auth/                     # Authentication pages
-│   ├── client-portal/            # Client-facing pages
-│   └── globals.css               # Global styles
-├── components/                   # Reusable components
-│   ├── client-portal/            # Client portal components
-│   ├── clients/                  # Client management components
-│   ├── forms/                    # Form components
-│   ├── interventions/            # Intervention management
-│   ├── nav/                      # Navigation components
-│   ├── profile/                  # Profile components
-│   └── ui/                       # Base UI components
-├── lib/                          # Utility libraries
-│   ├── client-portal/            # Client portal logic
-│   └── supabase/                 # Database clients
-├── middleware/                   # Authentication middleware
-└── types/                        # TypeScript type definitions
-```
-
-## Database Schema
-
-### Core Tables
-- **coaches**: Coach profiles and settings
-- **clients**: Client information and preferences
-- **craving_interventions**: Strategies for managing cravings
-- **energy_interventions**: Tactics for motivation/movement
-- **craving_incidents**: Records of craving episodes
-- **movement_incidents**: Records of energy/motivation episodes
-- **client_sos_messages**: Chat messages between clients and system
-
-### Key Relationships
-- Coaches have many clients
-- Clients have many interventions (both craving and energy)
-- Incidents track real-time client interactions
-- Messages belong to specific incidents
+- **AI**: OpenAI GPT-4.1-mini for coach responses
+- **PWA**: Mobile app functionality
 
 ## Core Features
 
 ### Coach Dashboard
-- **Client Management**: Add, edit, and monitor clients
-- **Intervention Library**: Customize strategies for clients
-- **Dashboard**: Overview of client activity and incidents
-- **Profile Management**: Coach settings and customization
+- Client management and intervention customization
+- Activity monitoring and dashboard overview
 
-### Client Portal
-- **Craving SOS**: Real-time support for food cravings
-- **Energy Boost**: Real-time support for motivation and movement
-- **PWA Capability**: Installable mobile app experience
-- **Token-based Access**: Secure, shareable client links
+### Client Portal - Unified Support Flow (Aug 2025)
+- **Single Entry Point**: "Get Support" button that branches based on struggle type
+- **Craving SOS**: 9-step structured conversation for food cravings
+- **Energy Boost**: 9-step structured conversation for motivation/movement
+- **AI Integration**: Natural coach responses with smart intervention selection
+- **PWA**: Installable mobile experience with token-based access
 
-### Conversation Flows
+### Conversation Flow Steps
+1. **IDENTIFY_STRUGGLE**: What are you struggling with? (craving/energy)
+2. **WELCOME**: Greeting and assessment
+3. **IDENTIFY_CRAVING/BLOCKER**: Food selection or movement barrier
+4. **GAUGE_INTENSITY/ENERGY**: Rate intensity/energy level (1-10)
+5. **IDENTIFY_LOCATION**: Current location context
+6. **IDENTIFY_TRIGGER/GOAL**: Emotional trigger or activity preference
+7. **SUGGEST_TACTIC**: AI-powered intervention suggestion
+8. **ENCOURAGEMENT**: Support during intervention
+9. **RATE_RESULT**: Effectiveness rating
+10. **CLOSE**: Session completion
 
-#### Craving SOS Flow
-The craving support follows a structured conversation with AI-powered natural responses:
-1. **WELCOME**: Initial greeting and assessment
-2. **IDENTIFY_CRAVING**: Food selection and identification  
-3. **GAUGE_INTENSITY**: Rate craving intensity (1-10)
-4. **IDENTIFY_LOCATION**: Where the craving is happening
-5. **IDENTIFY_TRIGGER**: Context/emotional trigger
-6. **SUGGEST_TACTIC**: AI-powered intervention suggestion
-7. **ENCOURAGEMENT**: Support during intervention
-8. **RATE_RESULT**: Post-intervention effectiveness rating
-9. **CLOSE**: Session completion
-
-#### Energy Boost Flow (NEW - Aug 2025)
-The energy/motivation support follows a parallel 6-step conversation structure:
-1. **WELCOME**: Initial greeting and energy assessment
-2. **IDENTIFY_BLOCKER**: What's preventing movement (tired, no time, not motivated, etc.)
-3. **GAUGE_ENERGY**: Rate current energy level (1-10)
-4. **IDENTIFY_LOCATION**: Where they are (home, gym, work, outdoors)
-5. **IDENTIFY_GOAL**: Activity preference (quick boost, light movement, full workout)
-6. **SUGGEST_TACTIC**: AI-powered energy intervention suggestion
-7. **ENCOURAGEMENT**: Support during activity
-8. **RATE_RESULT**: Post-activity energy level rating
-9. **CLOSE**: Session completion
-
-### AI Integration (GPT-4.1-mini)
-**Enhanced Coach Responses**: The conversation flow uses OpenAI GPT-4.1-mini to generate natural, contextual coach responses while maintaining the structured data collection process.
-
-**Smart Intervention Selection**: New AI-powered system intelligently selects primary and secondary interventions based on comprehensive client context.
-
-**Key Features:**
-- **Contextual Awareness**: AI responses reference client name, specific food craving, intensity level, location, and trigger
-- **Natural Language**: Conversations feel more human-like while preserving therapeutic structure
-- **Smart Interventions**: LLM selects most effective interventions based on craving type, intensity, location, trigger, time of day, and client's available strategies
-- **Dual Selection**: AI picks both primary and secondary interventions simultaneously, ensuring no duplication
-- **Intelligence Factors**: Considers intervention categories, complementary strategies, time-based appropriateness, and contextual effectiveness
-- **Robust Fallbacks**: Automatic fallback to hardcoded responses if AI service fails
-- **Cost Efficient**: Using GPT-4.1-mini (~$0.0005 per conversation + ~$0.002 per smart selection) for optimal cost-performance balance
-- **Personalized Tone**: AI adopts the coach's persona and maintains warm, non-judgmental communication
-
-**Implementation:**
-- `src/lib/openai/coach-ai.ts`: OpenAI service with step-specific prompts
-- `src/app/api/ai/smart-interventions/route.ts`: Smart intervention selection endpoint using GPT-4.1-mini
-- `src/lib/client-portal/smart-interventions.ts`: Client-side functions for intelligent intervention selection
-- Context tracking across conversation steps for personalized responses
-- Error handling with graceful degradation to standard responses
-- Smart selection triggered automatically when all context is collected (food, intensity, location, trigger)
+## Database Schema
+- **coaches**: Coach profiles
+- **clients**: Client information  
+- **craving_interventions/energy_interventions**: Support strategies
+- **craving_incidents/movement_incidents**: Session records
+- **client_sos_messages**: Chat messages
 
 ## Development Commands
-
-```bash
-# Development server
-npm run dev                    # Main app on port 3000
-npm run dev:client-portal      # Client portal on port 3001
-
-# Build and deployment
-npm run build                  # Production build
-npm start                     # Start production server
-npm run lint                  # ESLint code checking
-```
+- `npm run dev`: Development server (port 3000)
+- `npm run build`: Production build
+- `npm run lint`: Code checking
 
 ## Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key
-- `OPENAI_API_KEY`: OpenAI API key for AI responses
+- `OPENAI_API_KEY`: OpenAI API key
 
 ## MCP Server Access
-- **Supabase MCP Server**: `supabase-heycoach` available for database operations
+- **Supabase MCP Server**: `supabase-heycoach`
 - **Project ID**: `tikeyswnstrdpernoysw`
-- Use MCP tools prefixed with `mcp__` for direct database access when needed
 
-## Key Components
+## Recent Implementation (Aug 2025)
 
-### CravingService (`src/lib/client-portal/craving-service.ts`)
-Central service managing client-coach interactions:
-- Session initialization and token validation
-- Message processing and database operations
-- Conversation flow management
-- AI response integration
+### Unified Conversation Flow
+- Merged separate craving/energy entry points into single "Get Support" flow
+- Created `UnifiedService` to orchestrate `CravingService` and `EnergyService`
+- Dynamic UI theming based on support type (purple=craving, orange=energy)
+- Context-aware Likert scale colors:
+  - **Effectiveness Rating**: Green=effective, Red=ineffective
+  - **Energy Level**: Green=high energy, Red=low energy
+  - **Craving Intensity**: Green=low craving, Red=high craving
 
-### Middleware (`src/middleware.ts`)
-Handles authentication routing:
-- Coach authentication for dashboard routes
-- Bypasses auth for client portal routes
-- Supabase session management
+### Key Files
+- `src/app/client-portal/home/support/page.tsx`: Unified conversation UI
+- `src/lib/client-portal/unified-service.ts`: Service orchestration
+- `src/app/client-portal/home/page.tsx`: Single entry point
 
-### Database Utilities (`src/lib/client-portal/craving-db.ts`)
-Database operations for client portal:
-- Client/coach information retrieval
-- Incident creation and updates
-- Message storage and retrieval
+## Security (RLS)
+All tables protected with Row Level Security. Coaches access own clients only. Client portal uses token-based anonymous access with specific policies for incidents and messages.
 
-## Styling System
-
-### CSS Variables
-Custom properties for theming:
-- Primary: Purple gradient (`--primary`)
-- Secondary: Orange gradient (`--secondary`) 
-- Accent: Pink gradient (`--accent`)
-- Light/dark mode support
-
-### Custom Classes
-- `.crave-bubble`: Craving intervention styling
-- `.move-bubble`: Movement intervention styling
-- `.chat-bubble`: Animated message appearance
-- `.gradient-text`: Multi-color gradient text
-
-## Authentication Flow
-
-### Coach Authentication
-- Supabase Auth with session management
-- Middleware protection for dashboard routes
-- Profile management and settings
-
-### Client Authentication
-- Token-based access system
-- No account required for clients
-- PWA-friendly with localStorage persistence
-
-## API Endpoints
-
-### Client Management
-- `POST /api/clients/create`: Create new client
-- `PUT /api/clients/update`: Update client information
-- `GET /api/clients/[clientId]/interventions`: Get client interventions
-- `POST /api/clients/[clientId]/token`: Generate access token
-
-### Client Portal
-- `GET /api/client-portal/auth`: Validate client session
-- `GET /api/client/validate-token`: Validate client token
-
-## Recent Changes (from git commits)
-- Auto-focus input field after coach messages in craving SOS chat
-- Pass stored selectedFood to coach response in craving service  
-- Remove selectedFood references from craving conversation flow
-- Persist selected food across conversation steps
-- Simplified craving prompt text for better user engagement
-
-## Critical Bug Fixes (Aug 2025)
-
-### Intervention Reference Bug Fixes (Aug 8-9, 2025)
-
-#### AI Greetings & First Name Usage Fix (Aug 8)
-**Root Cause**: AI responses started with repetitive "Hey" and "Hey friend" greetings, and didn't use client's first name in initial messages.
-
-**Solution**: 
-- Standardized conversation history across ALL conversation steps using single variable
-- Added explicit first name usage request in WELCOME step prompts
-- Added greeting variation guidance to prevent "Hey/Hi" overuse
-
-#### Secondary Intervention ENCOURAGEMENT Bug (Aug 8) 
-**Root Cause**: When users clicked "Another idea" then "Yes, I'll try it", encouragement referenced primary intervention instead of secondary.
-
-**Solution**: Implemented conversation history analysis to detect "Another idea" clicks and determine which intervention flow the user is in. Uses simple text matching to identify secondary intervention acceptance.
-
-#### RATE_RESULT Intervention Detection Bug (Aug 9)
-**Root Cause**: Final effectiveness question asked about wrong intervention when secondary intervention was tried.
-
-**Solution**: Applied same conversation history analysis in follow-up scheduling to determine which intervention was actually tried and pass correct intervention to the AI prompt for the effectiveness question.
-
-**Files Modified**:
-- `src/app/api/ai/coach-response/route.ts`: Standardized conversation history, first name usage
-- `src/lib/client-portal/craving-conversation.ts`: Fixed encouragement intervention detection
-- `src/lib/client-portal/energy-conversation.ts`: Fixed encouragement intervention detection
-- `src/lib/client-portal/craving-service.ts`: Fixed RATE_RESULT intervention detection
-
-**Key Lesson**: Conversation history analysis with simple text matching ("Another idea") is effective for detecting secondary intervention flows across different conversation steps.
-
-### Energy Boost "No Interventions" Bug Resolution
-**Root Cause**: Missing RLS (Row Level Security) policy prevented client portal from accessing `energy_interventions` table.
-
-**Symptoms**: 
-- Energy Boost showed "I don't have any interventions configured" despite 25+ interventions in database
-- Client ID was correct, database queries worked in backend, but frontend received empty results
-- Craving SOS worked perfectly with identical code structure
-
-**Solution**: Added missing RLS policy to allow client portal read access to energy_interventions table.
-
-**Key Lesson**: When client portal queries return empty results but backend queries succeed, always check RLS policies first. Client portal runs with anonymous/public access and needs explicit read permissions for each table.
-
-**Related Fixes**:
-- Added button emojis to Energy Boost (👍 💡) for UI consistency
-- Implemented complete secondary intervention flow matching Craving SOS
-- Cleaned up debug logging and function name collisions
-
-## Development Notes
-
-### Code Style
-- TypeScript strict mode enabled
-- ESLint with Next.js configuration
-- Tailwind CSS for styling
-- Component composition pattern
-
-### Database Patterns
-- UUID primary keys
-- Timestamp tracking (created_at, updated_at)
-- JSON fields for flexible data storage
-- Soft deletes with active/inactive status
-
-### Security Policies (RLS)
-**IMPORTANT**: All database tables are protected with Row Level Security (RLS). Security audit completed Aug 2025.
-
-**Key Security Features:**
-- **Multi-tenant isolation**: Coaches can only access their own clients and data
-- **Token-based client access**: Client portal validates access via `get_client_from_token()`
-- **Anonymous client portal access**: Secure policies for client-side Supabase operations
-- **Comprehensive policies**: 35+ RLS policies across 11 tables ensuring data privacy
-- **Helper functions**: Secure ownership validation with proper `search_path` settings
-
-**Security Functions:**
-- `public.get_client_from_token()`: Validates client portal access via token (header-based)
-- `public.user_owns_client(uuid)`: Checks if authenticated coach owns a client
-- `public.user_owns_message_incident(uuid, text)`: Validates coach access to messages
-- `public.client_owns_message_incident(uuid, text)`: Validates client access to messages
-
-**Access Patterns:**
-- **Coaches (authenticated)**: Own clients, interventions, incidents, messages only
-- **Client Portal (anonymous/public)**: 
-  - Create/view incidents for valid token-holding clients
-  - Create/view messages for valid incidents
-  - View coach info for their assigned coach
-  - Update own client data (limited fields)
-- **Server-side (service_role)**: Token validation queries for authentication
-- **Default Tables**: Read-only access for reference data
-
-**Client Portal RLS Policies:**
-- `client_portal_view_coaches`: Access coach data for token-validated clients
-- `client_portal_create_incidents`: Create craving/movement incidents
-- `client_portal_create_messages`: Save chat messages to incidents
-- `client_portal_view_messages`: View incident message history
-- `allow_anonymous_token_validation`: Enable token-based authentication
-- `allow_server_token_validation`: Enable server-side token validation
-
-### Error Handling
-- Silent fallbacks for client portal functionality
-- Toast notifications for user feedback
-- Console logging for debugging
-
-## Testing Strategy
-No test framework currently configured. Consider adding:
-- Jest for unit tests
-- Playwright for e2e tests
-- React Testing Library for component tests
-
-## Deployment Considerations
-- Next.js production build required
-- Environment variables must be configured
-- Supabase database migrations needed
-- PWA assets generated during build
+## Authentication
+- **Coaches**: Supabase Auth with middleware protection
+- **Clients**: Token-based access, no accounts required

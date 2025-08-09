@@ -81,6 +81,21 @@ export async function getEnergyResponse({
   };
 
   switch (currentStep) {
+    case ConversationStep.IDENTIFY_STRUGGLE:
+      return {
+        response: {
+          id: `coach-${now.getTime()}`,
+          sender: 'coach',
+          text: `Hi ${clientName}! I'm here to help you get the support you need. What are you struggling with right now?`,
+          type: 'option_selection',
+          timestamp: now,
+        },
+        nextStep: ConversationStep.IDENTIFY_STRUGGLE,
+        options: [
+          { emoji: '🍰', name: 'I\'m having a craving', value: 'craving' },
+          { emoji: '⚡', name: 'I need an energy boost', value: 'energy' }
+        ]
+      };
     case ConversationStep.WELCOME:
       const welcomeText = await getResponseText(ConversationStep.WELCOME);
       return {

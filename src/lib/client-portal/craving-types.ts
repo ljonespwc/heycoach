@@ -68,6 +68,7 @@ export interface Client {
 }
 
 export enum ConversationStep {
+  IDENTIFY_STRUGGLE = 'identify_struggle',
   WELCOME = 'welcome',
   IDENTIFY_CRAVING = 'identify_craving',
   GAUGE_INTENSITY = 'gauge_intensity',
