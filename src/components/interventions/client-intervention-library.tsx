@@ -96,10 +96,17 @@ interface InterventionListProps {
   clientId: string
 }
 
+// Interface for usage statistics
+interface InterventionUsageStats {
+  suggested: number // times_used from client_interventions
+  used: number // count from incidents where intervention was completed
+}
+
 function InterventionList({ interventions, type, clientId }: InterventionListProps) {
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set())
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null)
   const [clientInterventions, setClientInterventions] = useState<Record<string, Partial<ClientIntervention>>>({})
+  const [usageStats, setUsageStats] = useState<Record<string, InterventionUsageStats>>({})
   const [editingIntervention, setEditingIntervention] = useState<BaseIntervention | null>(null)
   
   // Fetch client-specific intervention settings
@@ -124,6 +131,65 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
       console.error('Error fetching client interventions:', error)
     }
   }
+
+  // Fetch usage statistics (suggested vs used)
+  const fetchUsageStats = async (client: SupabaseClient) => {
+    try {
+      // Get intervention IDs for current type
+      const interventionIds = interventions.map(i => i.id)
+      if (interventionIds.length === 0) return
+
+      // Fetch suggested counts from client_interventions
+      const { data: clientData, error: clientError } = await client
+        .from('client_interventions')
+        .select('intervention_id, times_used')
+        .eq('client_id', clientId)
+        .eq('intervention_type', type)
+        .in('intervention_id', interventionIds)
+
+      if (clientError) throw clientError
+
+      // Fetch used counts from incidents
+      const incidentTable = type === 'craving' ? 'craving_incidents' : 'movement_incidents'
+      const { data: incidentData, error: incidentError } = await client
+        .from(incidentTable)
+        .select('intervention_id')
+        .eq('client_id', clientId)
+        .not('intervention_id', 'is', null)
+        .not('resolved_at', 'is', null) // Only count completed incidents
+        .in('intervention_id', interventionIds)
+
+      if (incidentError) throw incidentError
+
+      // Build usage statistics
+      const stats: Record<string, InterventionUsageStats> = {}
+      
+      // Initialize with suggested counts
+      clientData?.forEach(item => {
+        stats[item.intervention_id] = {
+          suggested: item.times_used || 0,
+          used: 0
+        }
+      })
+
+      // Count actual usage from incidents
+      incidentData?.forEach(incident => {
+        if (incident.intervention_id && stats[incident.intervention_id]) {
+          stats[incident.intervention_id].used++
+        } else if (incident.intervention_id) {
+          // Handle case where intervention was used but not in client_interventions
+          stats[incident.intervention_id] = {
+            suggested: 0,
+            used: 1
+          }
+        }
+      })
+
+      setUsageStats(stats)
+    } catch (error) {
+      console.error('Error fetching usage statistics:', error)
+    }
+  }
   
   // Initialize Supabase client only on the client side
   useEffect(() => {
@@ -134,11 +200,14 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
       // Fetch client-specific intervention settings
       fetchClientInterventions(client)
       
+      // Fetch usage statistics
+      fetchUsageStats(client)
+      
       // Initialize client interventions if needed
       initializeClientInterventions()
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, type]) // Removing fetchClientInterventions and initializeClientInterventions from deps to avoid infinite loop
+  }, [clientId, type, interventions.length]) // Re-fetch when interventions change
   
   // Initialize client interventions for this client
   const initializeClientInterventions = async () => {
@@ -157,6 +226,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
         // Refresh the client interventions after initialization
         if (supabase) {
           fetchClientInterventions(supabase)
+          fetchUsageStats(supabase)
         }
       }
     } catch (error) {
@@ -309,6 +379,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
   const handleInterventionUpdated = () => {
     if (supabase) {
       fetchClientInterventions(supabase)
+      fetchUsageStats(supabase)
     }
   }
   
@@ -408,32 +479,26 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
           {/* Usage statistics */}
           <div className="mt-2 flex flex-wrap gap-2">
             {/* Suggested times */}
-            {intervention.id in clientInterventions && 
-             typeof clientInterventions[intervention.id] === 'object' &&
-             clientInterventions[intervention.id] !== null &&
-             'times_used' in clientInterventions[intervention.id] && (
+            {usageStats[intervention.id] && usageStats[intervention.id].suggested > 0 && (
               <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
-                Suggested {clientInterventions[intervention.id].times_used} times
+                Suggested {usageStats[intervention.id].suggested} times
               </span>
             )}
             
-            {/* Used times (would be calculated from incidents table) */}
-            {intervention.id in clientInterventions && 
-             typeof clientInterventions[intervention.id] === 'object' &&
-             clientInterventions[intervention.id] !== null &&
-             'times_used' in clientInterventions[intervention.id] && (
+            {/* Used times (from completed incidents) */}
+            {usageStats[intervention.id] && usageStats[intervention.id].used > 0 && (
               <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
-                Used {Math.max(0, (clientInterventions[intervention.id].times_used as number) - 0)} times
+                Used {usageStats[intervention.id].used} times
               </span>
             )}
             
-            {/* Last used date if available */}
+            {/* Last suggested date if available */}
             {intervention.id in clientInterventions && 
              typeof clientInterventions[intervention.id] === 'object' &&
              clientInterventions[intervention.id] !== null &&
              clientInterventions[intervention.id].last_used_at && (
               <span className="text-xs px-2 py-1 bg-gray-50 text-gray-700 rounded-full">
-                Last used: {
+                Last suggested: {
                   new Date(clientInterventions[intervention.id].last_used_at as string).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
