@@ -5,6 +5,7 @@ export interface BaseIntervention {
   category: string | null;
   context_tags: string[] | null;
   active: boolean;
+  success_rate?: number | null;
 }
 
 export interface CravingIntervention extends BaseIntervention {

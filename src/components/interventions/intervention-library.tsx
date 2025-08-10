@@ -21,6 +21,16 @@ function getCategoryColor(category: string | null) {
   }
 }
 
+// Helper function to get success rate color based on percentage
+function getSuccessRateColor(successRate: number | null | undefined) {
+  if (successRate === null || successRate === undefined) return "bg-gray-100 text-gray-700";
+  
+  if (successRate >= 80) return "bg-green-100 text-green-700";
+  if (successRate >= 60) return "bg-yellow-100 text-yellow-700"; 
+  if (successRate >= 40) return "bg-orange-100 text-orange-700";
+  return "bg-red-100 text-red-700";
+}
+
 // Tabs component
 interface InterventionTabsProps {
   activeTab: 'craving' | 'energy'
@@ -155,8 +165,16 @@ function InterventionList({ interventions, type }: InterventionListProps) {
             <div className="space-y-2">
               <h3 className="font-medium text-gray-900">{intervention.name}</h3>
               
-              {/* Category and tags */}
+              {/* Category, success rate, and tags */}
               <div className="flex flex-wrap gap-2 mt-1">
+                {/* Success rate tag */}
+                <span className={`${getSuccessRateColor(intervention.success_rate)} px-2 py-0.5 rounded-md text-xs font-medium`}>
+                  {intervention.success_rate !== null && intervention.success_rate !== undefined
+                    ? `${Math.round(intervention.success_rate)}% success` 
+                    : 'No data'
+                  }
+                </span>
+                
                 {intervention.category && (
                   <span className={`${getCategoryColor(intervention.category)} px-2 py-0.5 rounded-md text-xs`}>
                     {intervention.category}
@@ -258,10 +276,19 @@ export function InterventionLibrary({
     return true
   })
   
-  // Sort interventions alphabetically by name
-  const sortedInterventions = [...filteredInterventions].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  )
+  // Sort interventions by success rate (DESC), then alphabetically by name
+  const sortedInterventions = [...filteredInterventions].sort((a, b) => {
+    // First sort by success_rate (higher is better, null/undefined goes last)
+    const aSuccessRate = a.success_rate ?? -1;
+    const bSuccessRate = b.success_rate ?? -1;
+    
+    if (aSuccessRate !== bSuccessRate) {
+      return bSuccessRate - aSuccessRate;
+    }
+    
+    // Then sort alphabetically by name
+    return a.name.localeCompare(b.name);
+  })
   
   // We've removed these filters from the UI but keeping the state
   // in case we need to re-enable the filters later
