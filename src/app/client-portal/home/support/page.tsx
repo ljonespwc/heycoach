@@ -8,6 +8,7 @@ import { Message, ConversationStep, Intervention } from '@/lib/client-portal/cra
 import { Option } from '@/lib/client-portal/craving-conversation'
 import { UnifiedService, type SupportType } from '@/lib/client-portal/unified-service'
 import { toast } from '@/components/ui/use-toast'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 
 export default function UnifiedSupportPage() {
   const router = useRouter()
@@ -334,7 +335,11 @@ export default function UnifiedSupportPage() {
       case 'intensity_rating':
         return (
           <div>
-            <p>{message.text}</p>
+            {message.sender === 'coach' ? (
+              <MarkdownRenderer content={message.text} variant="chat" />
+            ) : (
+              <p>{message.text}</p>
+            )}
             {message.sender === 'coach' && (
               <div className="mt-2 flex items-center space-x-1">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
@@ -362,7 +367,11 @@ export default function UnifiedSupportPage() {
         )
         
       default:
-        return <p>{message.text}</p>
+        return message.sender === 'coach' ? (
+          <MarkdownRenderer content={message.text} variant="chat" />
+        ) : (
+          <p>{message.text}</p>
+        )
     }
   }
 

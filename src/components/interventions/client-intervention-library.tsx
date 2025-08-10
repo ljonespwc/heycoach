@@ -8,6 +8,7 @@ import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline'
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { PencilSquareIcon } from '@heroicons/react/24/outline'
 import { EditClientInterventionModal } from './edit-client-intervention-modal'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 
 // Helper function to get category color
 function getCategoryColor(category: string | null) {
@@ -463,7 +464,7 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
           
           {/* Full description */}
           <div className="mt-3 text-sm text-gray-600">
-            <p>{intervention.description}</p>
+            <MarkdownRenderer content={intervention.description} variant="default" />
           </div>
           
           {/* Effectiveness rating if available */}
