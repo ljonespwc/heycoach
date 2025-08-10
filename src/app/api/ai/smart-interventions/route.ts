@@ -21,6 +21,9 @@ interface SmartInterventionContext {
     interventionName: string;
     effectiveness: number; // 1-10 rating
     context: string; // Similar context where it was used
+    timesSuggested: number;
+    lastSuggestedAt: string | null;
+    recentlySuggested: boolean;
   }>;
 }
 
@@ -95,6 +98,27 @@ export async function POST(request: NextRequest) {
     // Update context to use filtered interventions
     context.availableInterventions = locationFilteredInterventions;
 
+    // Add variety boost: separate fresh vs recently suggested interventions
+    if (context.previousEffectiveness && context.previousEffectiveness.length > 0) {
+      const recentlySuggestedIds = new Set(
+        context.previousEffectiveness
+          .filter(prev => prev.recentlySuggested)
+          .map(prev => prev.interventionId)
+      );
+
+      const freshInterventions = context.availableInterventions.filter(
+        intervention => !recentlySuggestedIds.has(intervention.id)
+      );
+
+      // If we have fresh options, prefer those. Otherwise use all available.
+      if (freshInterventions.length >= 2) {
+        context.availableInterventions = freshInterventions;
+        console.log(`🎯 Variety boost: Using ${freshInterventions.length} fresh interventions (avoiding ${recentlySuggestedIds.size} recently suggested)`);
+      } else {
+        console.log(`⚠️ Limited variety: Only ${freshInterventions.length} fresh interventions available, using all ${context.availableInterventions.length} options`);
+      }
+    }
+
     const isEnergyContext = context.interventionType === 'energy';
     
     const systemPrompt = `You are an expert ${isEnergyContext ? 'fitness and wellness' : 'nutrition'} coach AI that selects the most effective interventions for clients ${isEnergyContext ? 'experiencing low energy or motivation blocks' : 'experiencing food cravings'}.
@@ -114,6 +138,7 @@ ${isEnergyContext ?
 - **${isEnergyContext ? 'Goal/preference' : 'Trigger type'}**: ${isEnergyContext ? 'Different activity preferences (quick boost, light movement, full workout) need different approaches' : 'Different triggers (stress, boredom, habit, seeing food) respond to different approaches'}
 - **Time of day**: Energy levels and appropriate activities vary by time (late night = quieter strategies)
 - **Previous effectiveness**: STRONGLY prioritize interventions with high effectiveness ratings (8+/10) from similar contexts. Consider interventions with 6-7/10 as secondary options. Avoid interventions with effectiveness below 5/10 unless no alternatives exist
+- **Suggestion variety**: STRONGLY PREFER interventions that have NOT been recently suggested (recentlySuggested: false). Only choose recently suggested interventions if no other contextually appropriate options exist
 - **Intervention categories**: Balance different types (physical, mental, behavioral, etc.)
 - **Complementary strategies**: Choose secondary that uses different mechanisms than primary
 
@@ -159,10 +184,12 @@ Current Situation:
 - Time: ${context.timeOfDay} on ${getDayName(parseInt(context.dayOfWeek))}
 
 ${context.previousEffectiveness && context.previousEffectiveness.length > 0 ? `
-Previous Effectiveness Data:
-${context.previousEffectiveness.map(prev => 
-  `- ${prev.interventionName}: ${prev.effectiveness}/10 effectiveness in "${prev.context}"`
-).join('\n')}` : 'No previous effectiveness data available.'}
+Previous Effectiveness & Suggestion History:
+${context.previousEffectiveness.map(prev => {
+  const recentFlag = prev.recentlySuggested ? ' ⚠️ RECENTLY SUGGESTED' : ' ✅ Fresh option';
+  const suggestedTimes = prev.timesSuggested > 0 ? ` (suggested ${prev.timesSuggested} times)` : '';
+  return `- ${prev.interventionName}: ${prev.effectiveness}/10 effectiveness in "${prev.context}"${suggestedTimes}${recentFlag}`;
+}).join('\n')}` : 'No previous effectiveness data available.'}
 
 Available Interventions:
 ${context.availableInterventions.map(intervention => 
@@ -176,7 +203,11 @@ IMPORTANT REMINDERS:
 2. Consider the ${isEnergyContext ? `activity goal "${context.trigger}"` : `trigger "${context.trigger}"`} - ${isEnergyContext ? 'match intervention intensity to available time and desired outcome' : 'match intervention type to trigger (boredom→engagement, stress→calming, etc.)'}
 3. Time context matters - "${context.timeOfDay}" affects energy levels and appropriate activities
 4. ${isEnergyContext ? `Energy level ${context.intensity}/10 informs how gentle or intensive the intervention should be` : `Intensity ${context.intensity}/10 informs urgency of intervention needed`}
-5. **CRITICAL**: When effectiveness data exists, prioritize interventions with ratings ≥8/10. Only choose lower-rated interventions if no high-effectiveness options are available or contextually appropriate
+5. **CRITICAL SELECTION PRIORITY**:
+   a) First, filter for contextually appropriate interventions (location, trigger, time)
+   b) Second, STRONGLY prefer fresh options (⚠️ RECENTLY SUGGESTED = avoid if possible)  
+   c) Third, among fresh options, prioritize high effectiveness (≥8/10)
+   d) Only choose recently suggested interventions if NO fresh options exist
 6. Choose complementary primary/secondary interventions using different mechanisms`;
 
     const response = await openai.chat.completions.create({

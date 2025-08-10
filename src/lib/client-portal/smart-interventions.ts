@@ -15,6 +15,9 @@ interface SmartInterventionContext {
     interventionName: string;
     effectiveness: number; // 1-10 rating
     context: string; // Similar context where it was used
+    timesSuggested: number;
+    lastSuggestedAt: string | null;
+    recentlySuggested: boolean;
   }>;
 }
 
@@ -69,6 +72,9 @@ export async function getPreviousEffectiveness(clientId: string, context: {
   interventionName: string;
   effectiveness: number;
   context: string;
+  timesSuggested: number;
+  lastSuggestedAt: string | null;
+  recentlySuggested: boolean;
 }>> {
   if (!clientId) return [];
   
@@ -78,7 +84,7 @@ export async function getPreviousEffectiveness(clientId: string, context: {
     
     const isEnergyContext = context.interventionType === 'energy';
     
-    // Query client_interventions with effectiveness ratings
+    // Query client_interventions with effectiveness ratings and suggestion data
     const { data: clientInterventions, error: clientError } = await supabase
       .from('client_interventions')
       .select(`
@@ -171,11 +177,21 @@ export async function getPreviousEffectiveness(clientId: string, context: {
           contextDescription = 'general usage';
         }
         
+        // Calculate if recently suggested (within last 7 days)
+        const now = new Date();
+        const lastUsed = clientIntervention.last_used_at ? new Date(clientIntervention.last_used_at) : null;
+        const daysSinceLastSuggestion = lastUsed ? 
+          (now.getTime() - lastUsed.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
+        const recentlySuggested = daysSinceLastSuggestion <= 7; // Suggested within last week
+        
         return {
           interventionId: clientIntervention.intervention_id,
           interventionName: intervention.name,
           effectiveness: clientIntervention.effectiveness_rating,
-          context: contextDescription
+          context: contextDescription,
+          timesSuggested: clientIntervention.times_used || 0,
+          lastSuggestedAt: clientIntervention.last_used_at,
+          recentlySuggested: recentlySuggested
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null)

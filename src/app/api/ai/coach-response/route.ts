@@ -268,16 +268,20 @@ Guidelines:
       
       if (isEnergyContext) {
         return {
-          systemPrompt: `${coachPersona}\n\nThey're feeling ${selectedBlocker} (energy ${energyLevel}/10) at ${location}, and usually get unstuck through ${approach}. Time to suggest a helpful movement strategy that aligns with their preferred approach.\n\nGuidelines:\n- Use your ${coachTone} style\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this intervention works and how it connects to their preferred approach\n- Include specific actions they can take right now\n- Frame it as a way to overcome their blocker using their preferred approach\n- Be encouraging and detailed - they need to understand both the "what" and the "why"\n- Use 2-3 sentences to give them enough detail to succeed${conversationSummary}`,
+          systemPrompt: `${coachPersona}\n\nThey're feeling ${selectedBlocker} (energy ${energyLevel}/10) at ${location}, and usually get unstuck through ${approach}. Time to suggest a helpful movement strategy that aligns with their preferred approach.\n\nGuidelines:\n- Use your ${coachTone} style\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this intervention works and how it connects to their preferred approach\n- Include specific actions they can take right now\n- Frame it as a way to overcome their blocker using their preferred approach\n- Be encouraging and detailed - they need to understand both the "what" and the "why"
+
+**Length guidance**: Keep your response mobile-friendly and conversational - about 2-3 sentences that cover: 1) The key steps to take right now, 2) Why this intervention works for their specific energy/blocker situation, and 3) How it connects to their preferred approach (${approach}). Aim for the length of a supportive text message - thorough but not overwhelming.${conversationSummary}`,
           userPrompt: `Suggest they try "${intervention?.name}" (${intervention?.description}) using your ${coachTone} style. Give them specific steps on how to do it, explain why it works for their situation, and connect it to their preferred approach: ${approach}. Be detailed enough that they know exactly what to do.`,
-          maxTokens: 150
+          maxTokens: 350
         };
       }
       
       return {
-        systemPrompt: `${coachPersona}\n\nThey're craving ${selectedFood} (${intensity}/10) at ${location}, triggered by ${trigger}. Time to suggest a helpful strategy.\n\nGuidelines:\n- Use your ${coachTone} style\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this intervention works as an alternative to the craving\n- Include specific actions they can take right now\n- Frame it as a powerful alternative to giving in to the craving\n- Be encouraging and detailed - they need to understand both the "what" and the "why"\n- Use 2-3 sentences to give them enough detail to succeed${conversationSummary}`,
+        systemPrompt: `${coachPersona}\n\nThey're craving ${selectedFood} (${intensity}/10) at ${location}, triggered by ${trigger}. Time to suggest a helpful strategy.\n\nGuidelines:\n- Use your ${coachTone} style\n- Don't repeat details already discussed\n- Suggest the specific intervention: "${intervention?.name}" - ${intervention?.description}\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this intervention works as an alternative to the craving\n- Include specific actions they can take right now\n- Frame it as a powerful alternative to giving in to the craving\n- Be encouraging and detailed - they need to understand both the "what" and the "why"
+
+**Length guidance**: Keep your response mobile-friendly and conversational - about 2-3 sentences that cover: 1) The key steps to take right now, 2) Why this intervention works for their specific craving situation, and 3) One concrete action they can start with immediately. Aim for the length of a supportive text message - thorough but not overwhelming.${conversationSummary}`,
         userPrompt: `Suggest they try "${intervention?.name}" (${intervention?.description}) using your ${coachTone} style. Give them specific steps on how to do it, explain why it works for cravings, and help them understand how this will help them overcome their ${trigger} trigger. Be detailed enough that they know exactly what to do.`,
-        maxTokens: 150
+        maxTokens: 350
       };
 
     case ConversationStep.CONSENT_CHECK:
@@ -295,9 +299,11 @@ Guidelines:
         console.warn('ENCOURAGEMENT step called for "Another idea" - this should use SUGGEST_TACTIC step');
         const secondIntervention = interventions?.[0];
         return {
-          systemPrompt: `${coachPersona}\n\nThey wanted a different approach, so now you're suggesting "${secondIntervention?.name}".\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Acknowledge they wanted another option positively\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this alternative intervention works\n- Include specific actions they can take right now\n- Be detailed enough that they know exactly what to do\n- Use 2-3 sentences to give them enough detail to succeed`,
+          systemPrompt: `${coachPersona}\n\nThey wanted a different approach, so now you're suggesting "${secondIntervention?.name}".\n\nGuidelines:\n- Use your authentic ${coachTone} communication style\n- Acknowledge they wanted another option positively\n- Provide clear, step-by-step instructions on exactly what they should do\n- Explain WHY this alternative intervention works\n- Include specific actions they can take right now\n- Be detailed enough that they know exactly what to do
+
+**Length guidance**: Keep your response mobile-friendly and conversational - about 2-3 sentences that cover: 1) Brief positive acknowledgment that they wanted another option, 2) The key steps for this alternative approach, and 3) Why this different strategy works. Aim for the length of a supportive text message - clear and complete but not overwhelming.`,
           userPrompt: `Suggest "${secondIntervention?.name}" (${secondIntervention?.description}) using your ${coachTone} style. They wanted another option - be supportive of their choice. Give them specific steps on how to do it and explain why it works.`,
-          maxTokens: 120
+          maxTokens: 300
         };
       }
       
