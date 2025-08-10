@@ -392,10 +392,24 @@ function InterventionList({ interventions, type, clientId }: InterventionListPro
     )
   }
   
+  // Sort interventions by effectiveness (DESC), then alphabetically
+  const sortedInterventions = [...interventions].sort((a, b) => {
+    const aEffectiveness = getEffectivenessRating(a) || 0;
+    const bEffectiveness = getEffectivenessRating(b) || 0;
+    
+    // First sort by effectiveness (DESC) - higher effectiveness first
+    if (aEffectiveness !== bEffectiveness) {
+      return bEffectiveness - aEffectiveness;
+    }
+    
+    // Then sort alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
+  
   return (
     <>
       <div className="space-y-4">
-        {interventions.map(intervention => (
+        {sortedInterventions.map(intervention => (
         <div 
           key={intervention.id} 
           className="p-4 bg-card rounded-lg border border-border"
@@ -589,7 +603,7 @@ export function ClientInterventionLibrary({
     return true
   })
   
-  // Sort interventions alphabetically by name
+  // Sort interventions alphabetically by name (sorting by effectiveness moved to InterventionList)
   const sortedInterventions = [...filteredInterventions].sort((a, b) => 
     a.name.localeCompare(b.name)
   )
