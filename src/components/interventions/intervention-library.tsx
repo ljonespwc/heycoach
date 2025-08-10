@@ -162,33 +162,49 @@ function InterventionList({ interventions, type }: InterventionListProps) {
           className="p-4 bg-card rounded-lg border border-border"
         >
           <div className="flex justify-between items-start">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <h3 className="font-medium text-gray-900">{intervention.name}</h3>
               
-              {/* Category, success rate, and tags */}
-              <div className="flex flex-wrap gap-2 mt-1">
-                {/* Success rate tag */}
+              {/* Success rate line */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium min-w-[80px]">Success rate:</span>
                 <span className={`${getSuccessRateColor(intervention.success_rate)} px-2 py-0.5 rounded-md text-xs font-medium`}>
                   {intervention.success_rate !== null && intervention.success_rate !== undefined
-                    ? `${Math.round(intervention.success_rate)}% success` 
+                    ? `${Math.round(intervention.success_rate)}%` 
                     : 'No data'
                   }
                 </span>
-                
-                {intervention.category && (
+              </div>
+              
+              {/* Category line */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 font-medium min-w-[80px]">Category:</span>
+                {intervention.category ? (
                   <span className={`${getCategoryColor(intervention.category)} px-2 py-0.5 rounded-md text-xs`}>
                     {intervention.category}
                   </span>
+                ) : (
+                  <span className="text-xs text-gray-400">None</span>
                 )}
-                
-                {intervention.context_tags && intervention.context_tags.map(tag => (
-                  <span 
-                    key={tag} 
-                    className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
+              </div>
+              
+              {/* Ideal contexts line */}
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-gray-500 font-medium min-w-[80px] mt-0.5">Ideal contexts:</span>
+                <div className="flex flex-wrap gap-1">
+                  {intervention.context_tags && intervention.context_tags.length > 0 ? (
+                    intervention.context_tags.map(tag => (
+                      <span 
+                        key={tag} 
+                        className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-xs"
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">Universal</span>
+                  )}
+                </div>
               </div>
             </div>
             
