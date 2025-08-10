@@ -9,7 +9,7 @@ import {
   MessageType
 } from './craving-types';
 import * as CravingDB from './craving-db';
-import { updateClientInterventionEffectiveness, incrementInterventionUsage } from './craving-db';
+import { updateClientInterventionEffectiveness, incrementInterventionUsage, updateInterventionSuccessRate } from './craving-db';
 import { getCoachResponse, type CoachResponse, type Option } from './craving-conversation';
 import { selectSmartInterventions, getCurrentContextInfo, getPreviousEffectiveness } from './smart-interventions';
 
@@ -477,6 +477,9 @@ export class CravingService {
             if (interventionId && this.clientId) {
               console.log('Updating intervention effectiveness:', { interventionId, resultRating });
               await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+              
+              // Update success_rate in real-time for this specific intervention
+              await updateInterventionSuccessRate(interventionId);
             }
             
             // Transition to CLOSE step after rating is provided
@@ -635,6 +638,9 @@ export class CravingService {
             if (interventionId && this.clientId) {
               console.log('Updating intervention effectiveness:', { interventionId, resultRating });
               await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+              
+              // Update success_rate in real-time for this specific intervention
+              await updateInterventionSuccessRate(interventionId);
             }
             
             // Transition to CLOSE step after rating is provided

@@ -9,7 +9,7 @@ import {
   MessageType
 } from './craving-types';
 import * as EnergyDB from './energy-db';
-import { updateClientInterventionEffectiveness, incrementInterventionUsage } from './energy-db';
+import { updateClientInterventionEffectiveness, incrementInterventionUsage, updateInterventionSuccessRate } from './energy-db';
 import { getEnergyResponse, type EnergyResponse, type Option } from './energy-conversation';
 import { selectSmartInterventions, getCurrentContextInfo, getPreviousEffectiveness } from './smart-interventions';
 
@@ -450,7 +450,7 @@ export class EnergyService {
         case ConversationStep.CHECK_ACTIVITY_COMPLETION:
           messageType = 'option_selection';
           // User responded about activity completion
-          const activityCompleted = cleanValue === "I did!" || cleanValue === "Yes" || cleanValue.toLowerCase().includes("did");
+          const activityCompleted = cleanValue === "I did!" || cleanValue === "Yes" || (cleanValue.toLowerCase().includes("did") && !cleanValue.toLowerCase().includes("didn't"));
           console.log('Activity completion response:', { cleanValue, activityCompleted });
           
           // Update movement_incidents.activity_completed
@@ -475,6 +475,9 @@ export class EnergyService {
             if (interventionId && this.clientId) {
               console.log('Updating intervention effectiveness:', { interventionId, resultRating });
               await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+              
+              // Update success_rate in real-time for this specific intervention
+              await updateInterventionSuccessRate(interventionId);
             }
             
             // Transition to CLOSE step after rating is provided
@@ -612,7 +615,7 @@ export class EnergyService {
         case ConversationStep.CHECK_ACTIVITY_COMPLETION:
           messageType = 'option_selection';
           // User responded about activity completion via text
-          const activityCompletedText = cleanValue.toLowerCase().includes("did") || cleanValue.toLowerCase().includes("yes") || cleanValue.toLowerCase().includes("completed");
+          const activityCompletedText = (cleanValue.toLowerCase().includes("did") && !cleanValue.toLowerCase().includes("didn't")) || cleanValue.toLowerCase().includes("yes") || cleanValue.toLowerCase().includes("completed");
           console.log('Activity completion response (text):', { cleanValue, activityCompletedText });
           
           // Update movement_incidents.activity_completed  
@@ -637,6 +640,9 @@ export class EnergyService {
             if (interventionId && this.clientId) {
               console.log('Updating intervention effectiveness:', { interventionId, resultRating });
               await updateClientInterventionEffectiveness(this.clientId, interventionId, resultRating);
+              
+              // Update success_rate in real-time for this specific intervention
+              await updateInterventionSuccessRate(interventionId);
             }
             
             // Transition to CLOSE step after rating is provided

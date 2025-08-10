@@ -420,5 +420,33 @@ export async function incrementInterventionUsage(
   }
 }
 
+// Update success_rate for a specific intervention in real-time
+export async function updateInterventionSuccessRate(
+  interventionId: string
+): Promise<boolean> {
+  if (!interventionId) {
+    console.error('❌ Invalid intervention ID for success rate update');
+    return false;
+  }
+
+  try {
+    const { error } = await supabase.rpc('update_specific_intervention_success_rate', {
+      p_intervention_id: interventionId,
+      p_intervention_type: 'energy'
+    });
+
+    if (error) {
+      console.error('❌ Error updating intervention success rate:', error);
+      return false;
+    }
+
+    console.log('✅ Updated success rate for intervention:', interventionId);
+    return true;
+  } catch (e) {
+    console.error('❌ Exception updating intervention success rate:', e);
+    return false;
+  }
+}
+
 // Re-export functions from craving-db for shared functionality
 export { fetchClientByToken, fetchClientDetails, getCoachInfo } from './craving-db';
