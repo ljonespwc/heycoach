@@ -30,6 +30,7 @@ export class EnergyService {
   private coachTone: string | null = null // Store coach communication style
   private primaryIntervention: Intervention | null = null // Store smart-selected primary intervention
   private secondaryIntervention: Intervention | null = null // Store smart-selected secondary intervention
+  private scheduledFollowUpTimeout: NodeJS.Timeout | null = null // Track scheduled follow-up to prevent race conditions
   
   constructor() {
     // Constructor can't be async, initialization will be handled by the page component
@@ -482,6 +483,9 @@ export class EnergyService {
             
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
+            
+            // Clear any scheduled follow-up since conversation is ending
+            this.clearScheduledFollowUp();
           } else {
             console.log('ERROR: resultRating is NaN, not updating movement incident');
           }
@@ -647,6 +651,9 @@ export class EnergyService {
             
             // Transition to CLOSE step after rating is provided
             currentStep = ConversationStep.CLOSE;
+            
+            // Clear any scheduled follow-up since conversation is ending
+            this.clearScheduledFollowUp();
           } else {
             console.log('ERROR: resultRating is NaN, not updating movement incident');
           }
@@ -738,6 +745,15 @@ export class EnergyService {
     }, 1000);
   }
   
+  // Clear any scheduled follow-up to prevent race conditions
+  private clearScheduledFollowUp(): void {
+    if (this.scheduledFollowUpTimeout) {
+      clearTimeout(this.scheduledFollowUpTimeout);
+      this.scheduledFollowUpTimeout = null;
+      console.log('✅ Cleared scheduled follow-up to prevent duplicate activity check');
+    }
+  }
+  
   // Centralized follow-up scheduling
   private scheduleInternalFollowUp({
     clientName,
@@ -753,7 +769,16 @@ export class EnergyService {
       optionChoices: Array<Option | string>;
     }) => void;
   }): void {
-    setTimeout(async () => {
+    // Clear any existing follow-up before scheduling a new one
+    this.clearScheduledFollowUp();
+    
+    this.scheduledFollowUpTimeout = setTimeout(async () => {
+      // Check if follow-up is still needed (conversation might have ended)
+      if (!this.scheduledFollowUpTimeout) {
+        console.log('⏭️ Skipping scheduled follow-up - already cleared');
+        return;
+      }
+      
       const followUpConversationHistory = await this.getConversationHistory();
       const followUpRes = await getEnergyResponse({
         currentStep: ConversationStep.CHECK_ACTIVITY_COMPLETION,
@@ -776,6 +801,9 @@ export class EnergyService {
         currentStep: followUpRes.nextStep,
         optionChoices: followUpRes.options || []
       });
+      
+      // Clear the timeout reference after execution
+      this.scheduledFollowUpTimeout = null;
     }, 30 * 1000); // 30 seconds for testing
   }
 

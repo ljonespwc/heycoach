@@ -106,3 +106,12 @@ Created comprehensive RPC functions to fix missing intervention usage and effect
 - System now tracks intervention usage statistics and provides data for AI-powered smart recommendations
 
 **Missing:** Only `movement_incidents.activity_completed` tracking remains unimplemented in conversation flow.
+
+## Recent Changes
+
+### Aug 10, 2025 - Markdown Rendering & Bug Fix
+- **Markdown Support**: Added `react-markdown` with mobile-optimized styling for intervention descriptions
+- **AI Formatting**: Updated LLM prompts to generate markdown-formatted responses (**bold**, *italics*, bullet lists)
+- **UI Integration**: Intervention suggestions now render with proper formatting in both client chat and coach portal
+- **Race Condition Fix**: Fixed bug where scheduled follow-ups fired after conversation completion, causing duplicate activity checks
+- **Cross-Platform**: Applied timeout management fixes to both craving and energy conversation flows
