@@ -77,6 +77,7 @@ export enum ConversationStep {
   SUGGEST_TACTIC = 'suggest_tactic',
   CONSENT_CHECK = 'consent_check',
   ENCOURAGEMENT = 'encouragement',
+  CHECK_ACTIVITY_COMPLETION = 'check_activity_completion',
   RATE_RESULT = 'rate_result',
   CLOSE = 'close',
   // Energy Boost specific steps

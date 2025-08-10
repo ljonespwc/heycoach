@@ -447,6 +447,16 @@ export class EnergyService {
           await this.performSmartInterventionSelection(clientName);
           break;
 
+        case ConversationStep.CHECK_ACTIVITY_COMPLETION:
+          messageType = 'option_selection';
+          // User responded about activity completion
+          const activityCompleted = cleanValue === "I did!" || cleanValue === "Yes" || cleanValue.toLowerCase().includes("did");
+          console.log('Activity completion response:', { cleanValue, activityCompleted });
+          
+          // Update movement_incidents.activity_completed
+          await this.updateIncident({ activityCompleted });
+          break;
+          
         case ConversationStep.RATE_RESULT:
           console.log('🔍 Energy RATE_RESULT option case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
@@ -599,6 +609,16 @@ export class EnergyService {
           }
           break;
           
+        case ConversationStep.CHECK_ACTIVITY_COMPLETION:
+          messageType = 'option_selection';
+          // User responded about activity completion via text
+          const activityCompletedText = cleanValue.toLowerCase().includes("did") || cleanValue.toLowerCase().includes("yes") || cleanValue.toLowerCase().includes("completed");
+          console.log('Activity completion response (text):', { cleanValue, activityCompletedText });
+          
+          // Update movement_incidents.activity_completed  
+          await this.updateIncident({ activityCompleted: activityCompletedText });
+          break;
+          
         case ConversationStep.RATE_RESULT:
           console.log('🔍 Energy RATE_RESULT text case - setting messageType to intensity_rating');
           messageType = 'intensity_rating';
@@ -672,7 +692,7 @@ export class EnergyService {
         chosenIntervention: updatedChosenIntervention
       });
       
-      // Schedule follow-up if transitioning to RATE_RESULT step
+      // Schedule follow-up if transitioning to RATE_RESULT step (which means we need to ask about activity completion first)
       if (coachRes.nextStep === ConversationStep.RATE_RESULT && updatedChosenIntervention) {
         this.scheduleInternalFollowUp({
           clientName,
@@ -680,6 +700,34 @@ export class EnergyService {
           onMessage,
           onStateUpdate
         });
+      }
+      
+      // Auto-transition to effectiveness rating after celebration/encouragement message
+      if (currentStep === ConversationStep.CHECK_ACTIVITY_COMPLETION && coachRes.nextStep === ConversationStep.RATE_RESULT) {
+        setTimeout(async () => {
+          const rateConversationHistory = await this.getConversationHistory();
+          const rateRes = await getEnergyResponse({
+            currentStep: ConversationStep.RATE_RESULT,
+            clientName,
+            clientId: this.clientId || '',
+            selectedBlocker: this.selectedBlocker || undefined,
+            chosenIntervention: updatedChosenIntervention || undefined,
+            coachName: this.coachName || undefined,
+            coachTone: this.coachTone || undefined,
+            energyLevel: this.energyLevel || undefined,
+            location: this.location || undefined,
+            approach: this.approach || undefined,
+            conversationHistory: rateConversationHistory,
+            primaryIntervention: this.primaryIntervention || undefined,
+            secondaryIntervention: this.secondaryIntervention || undefined,
+          });
+          
+          await onMessage(rateRes.response);
+          onStateUpdate({
+            currentStep: rateRes.nextStep,
+            optionChoices: rateRes.options || []
+          });
+        }, 2000); // 2 second delay after celebration
       }
     }, 1000);
   }
@@ -702,7 +750,7 @@ export class EnergyService {
     setTimeout(async () => {
       const followUpConversationHistory = await this.getConversationHistory();
       const followUpRes = await getEnergyResponse({
-        currentStep: ConversationStep.RATE_RESULT,
+        currentStep: ConversationStep.CHECK_ACTIVITY_COMPLETION,
         clientName,
         clientId: this.clientId || '',
         selectedBlocker: this.selectedBlocker || undefined, // Pass stored selectedBlocker to coach response

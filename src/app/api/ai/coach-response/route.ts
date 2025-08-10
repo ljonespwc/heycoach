@@ -311,6 +311,66 @@ Guidelines:
         maxTokens: 60
       };
 
+    case ConversationStep.CHECK_ACTIVITY_COMPLETION:
+      // Only for energy context - check if they completed the activity
+      if (isEnergyContext) {
+        const activityIntervention = interventions?.[0];
+        const activityName = activityIntervention?.name || chosenIntervention?.name || 'the activity';
+        
+        // Check if they already responded about completion
+        const lastClientMessage = conversationHistory?.slice().reverse().find(msg => msg.sender === 'client');
+        const isFollowUpResponse = lastClientMessage && (
+          lastClientMessage.text === 'I did!' || 
+          lastClientMessage.text === "I didn't" ||
+          (lastClientMessage.text.toLowerCase().includes('did') && 
+           !lastClientMessage.text.toLowerCase().includes("i'll try it"))
+        );
+        
+        if (isFollowUpResponse) {
+          // They responded - provide celebration or encouragement
+          const completed = lastClientMessage.text.includes('did') && !lastClientMessage.text.includes('didn\'t');
+          
+          return {
+            systemPrompt: `${coachPersona}
+
+They just told you they ${completed ? 'completed' : 'didn\'t complete'} "${activityName}".
+
+Guidelines:
+- Use your authentic ${coachTone} communication style
+${completed ? 
+  '- Celebrate their success genuinely but briefly\n- Acknowledge their effort and commitment' :
+  '- Be understanding and encouraging\n- Normalize that not completing is okay\n- Focus on the attempt and learning'}
+- Keep it under 25 words
+- DO NOT ask about effectiveness yet - just celebrate or encourage${conversationSummary}`,
+            userPrompt: `They ${completed ? 'completed' : 'didn\'t complete'} the activity. ${completed ? 'Celebrate briefly' : 'Be encouraging'}. Use your ${coachTone} style. Keep it short - don't ask about effectiveness yet.`,
+            maxTokens: 50
+          };
+        } else {
+          // Initial question about completion
+          return {
+            systemPrompt: `${coachPersona}
+
+Check if ${clientName} completed "${activityName}". You're following up after encouraging them to try it.
+
+Guidelines:
+- Use your authentic ${coachTone} communication style  
+- Reference the specific activity they were going to try
+- Ask directly but warmly if they did it
+- Keep it under 25 words
+- Be understanding either way - completion isn't required for support${conversationSummary}`,
+            userPrompt: `Ask ${clientName} if they completed "${activityName}" using your ${coachTone} style. Be warm and understanding.`,
+            maxTokens: 40
+          };
+        }
+      }
+      
+      // Fallback for non-energy context (shouldn't happen)
+      return {
+        systemPrompt: `${coachPersona}\n\nCheck how they're doing.`,
+        userPrompt: `Check how ${clientName} is doing.`,
+        maxTokens: 20
+      };
+
     case ConversationStep.RATE_RESULT:
             
       // For RATE_RESULT, use the actual intervention from interventions array, not chosenIntervention

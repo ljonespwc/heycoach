@@ -424,6 +424,49 @@ export async function getEnergyResponse({
         nextStep: ConversationStep.RATE_RESULT
       };
 
+    case ConversationStep.CHECK_ACTIVITY_COMPLETION:
+      const activityText = await getResponseText(ConversationStep.CHECK_ACTIVITY_COMPLETION, 
+        primaryIntervention ? [primaryIntervention] : undefined);
+      
+      // Check if this is a follow-up response (celebration/encouragement)
+      const lastClientMessage = conversationHistory?.slice().reverse().find(msg => msg.sender === 'client');
+      const isFollowUpResponse = lastClientMessage && (
+        lastClientMessage.text === 'I did!' || 
+        lastClientMessage.text === "I didn't" ||
+        (lastClientMessage.text.toLowerCase().includes('did') && 
+         !lastClientMessage.text.toLowerCase().includes("i'll try it"))
+      );
+      
+      if (isFollowUpResponse) {
+        // This is the celebration/encouragement response, move to effectiveness rating
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach',
+            text: activityText,
+            type: 'text',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.RATE_RESULT
+        };
+      } else {
+        // This is the initial activity completion question
+        return {
+          response: {
+            id: `coach-${now.getTime()}`,
+            sender: 'coach', 
+            text: activityText,
+            type: 'option_selection',
+            timestamp: now,
+          },
+          nextStep: ConversationStep.CHECK_ACTIVITY_COMPLETION, // Stay in same step for sub-response
+          options: [
+            { emoji: '✅', name: 'I did!' },
+            { emoji: '😔', name: "I didn't" }
+          ]
+        };
+      }
+
     case ConversationStep.RATE_RESULT:
       // When we reach the rate result step, mark the incident as resolved
       if (clientId) {
