@@ -84,24 +84,23 @@ export function DashboardClient() {
         loading={loading}
       />
 
-      {/* Quick Actions and Client Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 bg-card rounded-lg border border-border">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
-          <div className="space-y-4">
-            <button className="w-full p-4 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors">
-              Add New Client
-            </button>
-            <button className="w-full p-4 bg-secondary/10 hover:bg-secondary/20 text-secondary rounded-lg transition-colors">
-              Create Intervention Template
-            </button>
-          </div>
-        </div>
+      {/* Client Insights - Full Width */}
+      <ClientInsights
+        data={data?.insights || undefined}
+        loading={loading}
+      />
 
-        <ClientInsights
-          data={data?.insights || undefined}
-          loading={loading}
-        />
+      {/* Quick Actions - Compact Row */}
+      <div className="p-4 bg-card rounded-lg border border-border">
+        <h3 className="text-lg font-semibold mb-3 text-gray-900">Quick Actions</h3>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button className="flex-1 p-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors text-sm font-medium">
+            Add New Client
+          </button>
+          <button className="flex-1 p-3 bg-secondary/10 hover:bg-secondary/20 text-secondary rounded-lg transition-colors text-sm font-medium">
+            Create Intervention Template
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -209,55 +209,65 @@ export async function getClientInsights(coachId: string): Promise<InsightData | 
     return null
   }
 
-  // Get top performing interventions
-  const { data: interventionStats } = await supabase
-    .from('client_interventions')
-    .select(`
-      intervention_id,
-      intervention_type,
-      effectiveness_rating,
-      times_used,
-      craving_interventions(name, success_rate),
-      energy_interventions(name, success_rate)
-    `)
-    .in('client_id', clientIdArray)
-    .not('effectiveness_rating', 'is', null)
-
+  // Get top performing interventions with a working approach
   const topInterventions: InsightData['topInterventions'] = []
-  if (interventionStats) {
-    const interventionMap = new Map()
-    
-    interventionStats.forEach(stat => {
-      const interventionData = stat.intervention_type === 'craving' 
-        ? (Array.isArray(stat.craving_interventions) ? stat.craving_interventions[0] : stat.craving_interventions)
-        : (Array.isArray(stat.energy_interventions) ? stat.energy_interventions[0] : stat.energy_interventions)
-      
-      if (interventionData && interventionData.name) {
-        const key = stat.intervention_id
-        if (!interventionMap.has(key)) {
-          interventionMap.set(key, {
-            id: key,
-            name: interventionData.name,
-            successRate: interventionData.success_rate || 0,
-            usageCount: 0,
-            totalRating: 0,
-            ratingCount: 0
-          })
-        }
-        
-        const intervention = interventionMap.get(key)
-        intervention.usageCount += stat.times_used || 0
-        if (stat.effectiveness_rating) {
-          intervention.totalRating += stat.effectiveness_rating
-          intervention.ratingCount += 1
-        }
-      }
-    })
+  
+  if (clientIdArray.length > 0) {
+    // First get all client interventions with ratings
+    const { data: interventionStats } = await supabase
+      .from('client_interventions')
+      .select('intervention_id, intervention_type, effectiveness_rating, times_used')
+      .in('client_id', clientIdArray)
+      .not('effectiveness_rating', 'is', null)
 
-    // Convert to array and sort by success rate
-    topInterventions.push(...Array.from(interventionMap.values())
-      .sort((a, b) => b.successRate - a.successRate)
-      .slice(0, 5))
+    if (interventionStats && interventionStats.length > 0) {
+      const interventionMap = new Map()
+      
+      // Get intervention details for each type
+      const cravingIds = interventionStats.filter(s => s.intervention_type === 'craving').map(s => s.intervention_id)
+      const energyIds = interventionStats.filter(s => s.intervention_type === 'energy').map(s => s.intervention_id)
+      
+      const cravingPromise = cravingIds.length > 0 
+        ? supabase.from('craving_interventions').select('id, name, success_rate').in('id', cravingIds)
+        : Promise.resolve({ data: [] })
+        
+      const energyPromise = energyIds.length > 0
+        ? supabase.from('energy_interventions').select('id, name, success_rate').in('id', energyIds)
+        : Promise.resolve({ data: [] })
+      
+      const [{ data: cravingData }, { data: energyData }] = await Promise.all([cravingPromise, energyPromise])
+      
+      // Create lookup maps
+      const interventionLookup = new Map()
+      ;[...(cravingData || []), ...(energyData || [])].forEach(item => {
+        interventionLookup.set(item.id, item)
+      })
+      
+      // Process stats with intervention details
+      interventionStats.forEach(stat => {
+        const interventionData = interventionLookup.get(stat.intervention_id)
+        
+        if (interventionData) {
+          const key = stat.intervention_id
+          if (!interventionMap.has(key)) {
+            interventionMap.set(key, {
+              id: key,
+              name: interventionData.name,
+              successRate: Number(interventionData.success_rate) || 0,
+              usageCount: 0
+            })
+          }
+          
+          const intervention = interventionMap.get(key)
+          intervention.usageCount += stat.times_used || 0
+        }
+      })
+
+      // Convert to array and sort
+      topInterventions.push(...Array.from(interventionMap.values())
+        .sort((a, b) => b.successRate - a.successRate)
+        .slice(0, 5))
+    }
   }
 
   // Get struggle patterns by time of day
@@ -285,10 +295,10 @@ export async function getClientInsights(coachId: string): Promise<InsightData | 
       data.forEach(item => {
         const hour = parseInt(item.time_of_day.split(':')[0])
         let period: string
-        if (hour < 6) period = 'Late Night (12-6 AM)'
-        else if (hour < 12) period = 'Morning (6 AM-12 PM)'
-        else if (hour < 18) period = 'Afternoon (12-6 PM)'
-        else period = 'Evening (6 PM-12 AM)'
+        if (hour < 6) period = 'Late Night'
+        else if (hour < 12) period = 'Morning'
+        else if (hour < 18) period = 'Afternoon'
+        else period = 'Evening'
 
         const key = `${period}-${type}`
         timeMap.set(key, (timeMap.get(key) || 0) + 1)

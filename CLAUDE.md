@@ -49,6 +49,8 @@ HeyCoach is a Next.js-based fitness coaching platform that provides on-demand su
 - `npm run build`: Production build
 - `npm run lint`: Code checking
 
+**IMPORTANT**: Never start the development server unless explicitly asked by the user.
+
 ## Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase anonymous key

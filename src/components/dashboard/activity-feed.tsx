@@ -64,7 +64,10 @@ export function ActivityFeed({ activities, loading = false }: ActivityFeedProps)
   if (loading) {
     return (
       <div className="p-6 bg-card rounded-lg border border-border">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Recent Activity</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <p className="text-sm text-gray-600 mt-1">Latest client interactions and session completions</p>
+        </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
@@ -85,7 +88,10 @@ export function ActivityFeed({ activities, loading = false }: ActivityFeedProps)
 
   return (
     <div className="p-6 bg-card rounded-lg border border-border">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900">Recent Activity</h3>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+        <p className="text-sm text-gray-600 mt-1">Latest client interactions and session completions</p>
+      </div>
       {activities.length === 0 ? (
         <div className="text-muted-foreground text-center py-8">
           No recent activity

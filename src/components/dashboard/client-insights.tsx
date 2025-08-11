@@ -38,9 +38,12 @@ function TopInterventionsWidget({ interventions }: { interventions: InsightData[
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2 mb-3">
-        <Target className="h-4 w-4 text-green-600" />
-        <h4 className="text-sm font-medium text-gray-900">Top Performing Interventions</h4>
+      <div className="mb-4">
+        <div className="flex items-center space-x-2 mb-1">
+          <Target className="h-4 w-4 text-green-600" />
+          <h4 className="text-sm font-medium text-gray-900">Top Performing Interventions</h4>
+        </div>
+        <p className="text-xs text-gray-500">Most effective strategies based on client success rates</p>
       </div>
       {interventions.slice(0, 3).map((intervention) => (
         <div key={intervention.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
@@ -71,21 +74,24 @@ function StrugglePatterns({ struggles }: { struggles: InsightData['strugglesData
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2 mb-3">
-        <Clock className="h-4 w-4 text-blue-600" />
-        <h4 className="text-sm font-medium text-gray-900">Common Struggle Times</h4>
+      <div className="mb-4">
+        <div className="flex items-center space-x-2 mb-1">
+          <Clock className="h-4 w-4 text-blue-600" />
+          <h4 className="text-sm font-medium text-gray-900">Common Struggle Times</h4>
+        </div>
+        <p className="text-xs text-gray-500">When clients most frequently request SOS support</p>
       </div>
       {struggles.slice(0, 4).map((struggle, index) => {
         const percentage = Math.round((struggle.count / totalStruggles) * 100)
         return (
           <div key={`${struggle.timeOfDay}-${struggle.type}-${index}`} className="space-y-1">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-700">{struggle.timeOfDay}</span>
-              <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700 truncate pr-2 flex-1">{struggle.timeOfDay}</span>
+              <div className="flex items-center space-x-1 flex-shrink-0">
                 <span className={`inline-block w-2 h-2 rounded-full ${
                   struggle.type === 'craving' ? 'bg-purple-500' : 'bg-orange-500'
                 }`}></span>
-                <span className="text-xs text-gray-500">{struggle.count} ({percentage}%)</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{struggle.count} ({percentage}%)</span>
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-1">
@@ -106,9 +112,12 @@ function StrugglePatterns({ struggles }: { struggles: InsightData['strugglesData
 function EngagementStats({ trends }: { trends: InsightData['engagementTrends'] }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2 mb-3">
-        <TrendingUp className="h-4 w-4 text-purple-600" />
-        <h4 className="text-sm font-medium text-gray-900">Engagement Overview</h4>
+      <div className="mb-4">
+        <div className="flex items-center space-x-2 mb-1">
+          <TrendingUp className="h-4 w-4 text-purple-600" />
+          <h4 className="text-sm font-medium text-gray-900">Engagement Overview</h4>
+        </div>
+        <p className="text-xs text-gray-500">Overall client activity and response metrics</p>
       </div>
       <div className="grid grid-cols-1 gap-3">
         <div className="p-3 bg-gray-50 rounded-md">
@@ -130,14 +139,28 @@ function EngagementStats({ trends }: { trends: InsightData['engagementTrends'] }
 
 function RiskIndicators({ risks }: { risks: InsightData['riskIndicators'] }) {
   if (risks.length === 0) {
-    return <p className="text-sm text-gray-500">No risk indicators</p>
+    return (
+      <div className="space-y-3">
+        <div className="mb-4">
+          <div className="flex items-center space-x-2 mb-1">
+            <Users className="h-4 w-4 text-red-600" />
+            <h4 className="text-sm font-medium text-gray-900">Client Risk Indicators</h4>
+          </div>
+          <p className="text-xs text-gray-500">Clients showing concerning patterns or declining success</p>
+        </div>
+        <p className="text-sm text-gray-500">No risk indicators</p>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2 mb-3">
-        <Users className="h-4 w-4 text-red-600" />
-        <h4 className="text-sm font-medium text-gray-900">Client Risk Indicators</h4>
+      <div className="mb-4">
+        <div className="flex items-center space-x-2 mb-1">
+          <Users className="h-4 w-4 text-red-600" />
+          <h4 className="text-sm font-medium text-gray-900">Client Risk Indicators</h4>
+        </div>
+        <p className="text-xs text-gray-500">Clients showing concerning patterns or declining success</p>
       </div>
       {risks.slice(0, 3).map((risk, index) => (
         <div key={`${risk.clientName}-${risk.risk}-${index}`} className="p-2 bg-gray-50 rounded-md">
@@ -162,12 +185,28 @@ export function ClientInsights({ data, loading = false }: ClientInsightsProps) {
   if (loading) {
     return (
       <div className="p-6 bg-card rounded-lg border border-border">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Client Insights</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="space-y-3 animate-pulse">
+        <h3 className="text-lg font-semibold mb-6 text-gray-900">Client Insights</h3>
+        
+        {/* Top row loading */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-4 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <div className="h-3 bg-gray-200 rounded"></div>
+                <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Bottom row loading */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {[3, 4].map((i) => (
+            <div key={i} className="space-y-4 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="space-y-3">
                 <div className="h-3 bg-gray-200 rounded"></div>
                 <div className="h-3 bg-gray-200 rounded w-5/6"></div>
                 <div className="h-3 bg-gray-200 rounded w-4/6"></div>
@@ -192,10 +231,19 @@ export function ClientInsights({ data, loading = false }: ClientInsightsProps) {
 
   return (
     <div className="p-6 bg-card rounded-lg border border-border">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900">Client Insights</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">Client Insights</h3>
+        <p className="text-sm text-gray-600 mt-1">Performance metrics and patterns across your client base</p>
+      </div>
+      
+      {/* Top row - Main insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <TopInterventionsWidget interventions={data.topInterventions} />
         <StrugglePatterns struggles={data.strugglesData} />
+      </div>
+      
+      {/* Bottom row - Secondary stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <EngagementStats trends={data.engagementTrends} />
         <RiskIndicators risks={data.riskIndicators} />
       </div>
