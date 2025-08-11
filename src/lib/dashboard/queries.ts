@@ -332,10 +332,89 @@ export async function getClientInsights(coachId: string): Promise<InsightData | 
     .select('*', { count: 'exact', head: true })
     .in('client_id', clientIdArray)
 
+  // Calculate most active day
+  const { data: sessionDates } = await supabase
+    .from('craving_incidents')
+    .select('created_at')
+    .in('client_id', clientIdArray)
+    .not('created_at', 'is', null)
+
+  const { data: movementDates } = await supabase
+    .from('movement_incidents')
+    .select('created_at')
+    .in('client_id', clientIdArray)
+    .not('created_at', 'is', null)
+
+  const dayCount = new Map()
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  ;[...(sessionDates || []), ...(movementDates || [])].forEach(session => {
+    const dayOfWeek = new Date(session.created_at).getDay()
+    const dayName = dayNames[dayOfWeek]
+    dayCount.set(dayName, (dayCount.get(dayName) || 0) + 1)
+  })
+
+  let mostActiveDay = 'No data'
+  let maxCount = 0
+  for (const [day, count] of dayCount.entries()) {
+    if (count > maxCount) {
+      maxCount = count
+      mostActiveDay = day
+    }
+  }
+
+  // Calculate average response time from coach messages
+  // First get incident IDs for this coach's clients
+  const { data: incidentIds } = await supabase
+    .from('craving_incidents')
+    .select('id')
+    .in('client_id', clientIdArray)
+  
+  const { data: movementIncidentIds } = await supabase
+    .from('movement_incidents')
+    .select('id')
+    .in('client_id', clientIdArray)
+
+  const allIncidentIds = [
+    ...(incidentIds?.map(i => i.id) || []),
+    ...(movementIncidentIds?.map(i => i.id) || [])
+  ]
+
+  const { data: messages } = allIncidentIds.length > 0 ? await supabase
+    .from('client_sos_messages')
+    .select('created_at, sender_type')
+    .in('incident_id', allIncidentIds)
+    .order('created_at', { ascending: true }) : { data: null }
+
+  let totalResponseTime = 0
+  let responseCount = 0
+  
+  if (messages && messages.length > 1) {
+    for (let i = 1; i < messages.length; i++) {
+      const currentMessage = messages[i]
+      const previousMessage = messages[i - 1]
+      
+      // If current is coach response to client message
+      if (currentMessage.sender_type === 'coach' && previousMessage.sender_type === 'client') {
+        const responseTime = new Date(currentMessage.created_at).getTime() - new Date(previousMessage.created_at).getTime()
+        totalResponseTime += responseTime
+        responseCount++
+      }
+    }
+  }
+
+  let averageResponseTime = 'No data'
+  if (responseCount > 0) {
+    const avgMinutes = Math.round(totalResponseTime / responseCount / 60000)
+    if (avgMinutes < 1) averageResponseTime = '< 1 min'
+    else if (avgMinutes < 60) averageResponseTime = `${avgMinutes} min`
+    else averageResponseTime = `${Math.round(avgMinutes / 60)} hr`
+  }
+
   const engagementTrends: InsightData['engagementTrends'] = {
     totalSessions: (totalSessions || 0) + (totalMovementSessions || 0),
-    averageResponseTime: '< 2 min', // Placeholder - would need message timestamps to calculate
-    mostActiveDay: 'Tuesday' // Placeholder - would need day analysis
+    averageResponseTime,
+    mostActiveDay
   }
 
   // Get risk indicators (simplified version)
