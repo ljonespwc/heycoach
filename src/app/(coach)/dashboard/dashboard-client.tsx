@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 import { ClientInsights } from '@/components/dashboard/client-insights'
@@ -20,6 +21,7 @@ interface DashboardData {
 }
 
 export function DashboardClient() {
+  const router = useRouter()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,10 +96,16 @@ export function DashboardClient() {
       <div className="p-4 bg-card rounded-lg border border-border">
         <h3 className="text-lg font-semibold mb-3 text-gray-900">Quick Actions</h3>
         <div className="flex flex-col sm:flex-row gap-3">
-          <button className="flex-1 p-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors text-sm font-medium">
+          <button 
+            onClick={() => router.push('/clients/new')}
+            className="flex-1 p-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors text-sm font-medium"
+          >
             Add New Client
           </button>
-          <button className="flex-1 p-3 bg-secondary/10 hover:bg-secondary/20 text-secondary rounded-lg transition-colors text-sm font-medium">
+          <button 
+            onClick={() => router.push('/interventions/new')}
+            className="flex-1 p-3 bg-secondary/10 hover:bg-secondary/20 text-secondary rounded-lg transition-colors text-sm font-medium"
+          >
             Create Intervention Template
           </button>
         </div>
